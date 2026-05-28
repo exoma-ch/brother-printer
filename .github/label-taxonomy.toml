@@ -112,6 +112,26 @@ name = "area:workspace"
 description = "Workspace tooling, justfile, templates"
 color = "1d76db"
 
+[[labels]]
+name = "area:transport"
+description = "USB/Bluetooth/network transport layer"
+color = "1d76db"
+
+[[labels]]
+name = "area:protocol"
+description = "P-touch raster protocol encoder/decoder"
+color = "1d76db"
+
+[[labels]]
+name = "area:imaging"
+description = "Image-to-raster pipeline, QR quality"
+color = "1d76db"
+
+[[labels]]
+name = "area:cli"
+description = "Command-line interface and entry points"
+color = "1d76db"
+
 # ── Effort ────────────────────────────────────────────────────────────────────
 
 [[labels]]
