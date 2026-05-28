@@ -3,7 +3,9 @@ name = "brother_printer"
 version = "0.1.0"
 description = "Open-source CLI and library for Brother PT-E920BT label printing"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pyusb>=1.2",
+]
 
 [build-system]
 requires = ["hatchling"]
