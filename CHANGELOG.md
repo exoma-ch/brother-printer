@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Downstream `promote-release.yml` workflow** ([#463](https://github.com/vig-os/devcontainer/issues/463))
   - Template at `.github/workflows/promote-release.yml`: validate draft release and release PR, publish release, merge to `main`, best-effort git RC tag cleanup
 
+- **USB transport layer with discover** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - `Transport` protocol, `UsbTransport` via pyusb, and `discover()` for PT-E920BT
+  - `brother-printer discover` CLI subcommand (Click)
+  - udev sample rule and Linux USB setup guide under `docs/install/linux-usb.md`
+
 ### Changed
 
 ### Deprecated
