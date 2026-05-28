@@ -5,7 +5,7 @@ USB identifiers: see docs/vendor/usb-ids.md
 
 import usb.core
 import usb.util
-from usb.core import USBError
+from usb.core import NoBackendError, USBError
 
 from brother_printer.transport.base import PrinterInfo
 from brother_printer.transport.errors import (
@@ -55,7 +55,16 @@ def _read_string_descriptor(device: usb.core.Device, index: int) -> str | None:
 
 def discover() -> list[PrinterInfo]:
     """List connected PT-E920BT printers on USB."""
-    devices = usb.core.find(idVendor=BROTHER_VID, find_all=True) or []
+    try:
+        devices = usb.core.find(idVendor=BROTHER_VID, find_all=True) or []
+    except NoBackendError as exc:
+        raise TransportError(
+            "USB backend unavailable — install libusb-1.0-0 "
+            "(see docs/install/linux-usb.md)"
+        ) from exc
+    except USBError as exc:
+        raise map_usb_error(exc) from exc
+
     printers: list[PrinterInfo] = []
 
     for device in devices:

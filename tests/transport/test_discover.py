@@ -2,7 +2,11 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from usb.core import NoBackendError
+
 from brother_printer.transport.base import PrinterInfo
+from brother_printer.transport.errors import TransportError
 from brother_printer.transport.usb import (
     BROTHER_VID,
     PT_E920BT_PRODUCT_STRING,
@@ -91,6 +95,15 @@ def test_discover_product_string_match_is_case_insensitive(mock_find, mock_get_s
     _configure_get_string(mock_get_string, [device])
 
     assert len(discover()) == 1
+
+
+@patch("brother_printer.transport.usb.usb.core.find")
+def test_discover_raises_when_usb_backend_unavailable(mock_find):
+    """discover() reports missing libusb backend with install guidance."""
+    mock_find.side_effect = NoBackendError("No backend available")
+
+    with pytest.raises(TransportError, match="libusb"):
+        discover()
 
 
 @patch("brother_printer.transport.usb.usb.core.find")
