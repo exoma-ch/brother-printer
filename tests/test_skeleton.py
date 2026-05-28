@@ -2,7 +2,13 @@
 
 import importlib
 
+import brother_printer
 import pytest
+
+
+def test_version():
+    """The root package exposes the project version."""
+    assert brother_printer.__version__ == "0.1.0"
 
 
 @pytest.mark.parametrize(
