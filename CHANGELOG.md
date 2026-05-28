@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Build-strategy ADR for PT-E920BT** ([#2](https://github.com/exoma-ch/brother-printer/issues/2))
   - Decision to implement P-touch raster from scratch in Python; prior-art comparison and rejected alternatives recorded in `docs/adr/0001-build-strategy.md`
 
+- **Architecture ADR and package skeleton** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - ADR-0002 documents the 5-layer architecture (transport, protocol, imaging, library API, CLI) and v0.2 web-service reuse path
+  - Empty `transport/`, `protocol/`, `imaging/`, `cli/` subpackages with responsibility docstrings
+
 - **Downstream `promote-release.yml` workflow** ([#463](https://github.com/vig-os/devcontainer/issues/463))
   - Template at `.github/workflows/promote-release.yml`: validate draft release and release PR, publish release, merge to `main`, best-effort git RC tag cleanup
 

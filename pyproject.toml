@@ -1,14 +1,9 @@
 [project]
 name = "brother_printer"
 version = "0.1.0"
-description = "brother_printer project"
+description = "Open-source CLI and library for Brother PT-E920BT label printing"
 requires-python = ">=3.12"
 dependencies = []
-
-[project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-cov>=4.0", "ipykernel>=6.0", "jupyter>=1.0"]
-science = ["numpy>=2.0", "scipy>=1.14", "pandas>=2.2", "matplotlib>=3.9"]
-all = ["brother_printer[dev,science]"]
 
 [build-system]
 requires = ["hatchling"]
@@ -18,4 +13,9 @@ build-backend = "hatchling.build"
 packages = ["src/brother_printer"]
 
 [dependency-groups]
-dev = ["hatchling>=1.25", "rich>=13.0.0"]
+dev = [
+    "hatchling>=1.25",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "rich>=13.0.0",
+]
