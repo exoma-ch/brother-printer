@@ -38,4 +38,9 @@ just --justfile "$PROJECT_ROOT/justfile" --working-directory "$PROJECT_ROOT" syn
 # User specific setup
 # Add your custom setup commands here to install any dependencies or tools needed for your project
 
+# PT-E920BT USB hardware verification needs the libusb backend (issue #4).
+# pyusb talks to libusb-1.0 via ctypes; the base image does not ship it.
+echo "Installing libusb backend for USB hardware tests..."
+apt-get update && apt-get install -y --no-install-recommends libusb-1.0-0
+
 echo "Post-create setup complete"
