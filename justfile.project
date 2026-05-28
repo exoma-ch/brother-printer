@@ -50,6 +50,11 @@ test *args:
 test-cov *args:
     uv run pytest --cov --cov-report=term-missing {{ args }}
 
+# Run opt-in hardware tests against a connected PT-E920BT (issue #4)
+[group('test')]
+test-hardware *args:
+    BROTHER_PRINTER_HARDWARE=1 uv run pytest -m hardware {{ args }}
+
 # -------------------------------------------------------------------------------
 # DEPENDENCIES
 # -------------------------------------------------------------------------------

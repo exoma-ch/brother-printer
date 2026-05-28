@@ -18,6 +18,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/brother_printer"]
 
+[tool.pytest.ini_options]
+markers = [
+    "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PRINTER_HARDWARE=1)",
+]
+
 [dependency-groups]
 dev = [
     "hatchling>=1.25",
