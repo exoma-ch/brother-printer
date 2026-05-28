@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Transport` protocol, `UsbTransport` via pyusb, and `discover()` for PT-E920BT
   - `brother-printer discover` CLI subcommand (Click)
   - udev sample rule and Linux USB setup guide under `docs/install/linux-usb.md`
+  - Devcontainer USB passthrough (`/dev/bus/usb`) and libusb backend for hardware verification
+  - Opt-in `just test-hardware` pytest marker for connected PT-E920BT smoke tests
 
 ### Changed
 
