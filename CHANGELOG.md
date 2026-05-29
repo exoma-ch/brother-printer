@@ -37,4 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **USB transport open on kernel-bound devices** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - Detach kernel driver before set_configuration; use pyusb util helpers for claim/release
+
 ### Security

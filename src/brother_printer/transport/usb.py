@@ -122,11 +122,11 @@ class UsbTransport:
             )
 
         try:
-            device.set_configuration()
             if device.is_kernel_driver_active(_DEFAULT_INTERFACE):
                 device.detach_kernel_driver(_DEFAULT_INTERFACE)
                 self._kernel_driver_detached = True
-            device.claim_interface(_DEFAULT_INTERFACE)
+            device.set_configuration()
+            usb.util.claim_interface(device, _DEFAULT_INTERFACE)
             self._ep_out, self._ep_in = self._resolve_bulk_endpoints(device)
         except USBError as exc:
             raise map_usb_error(exc) from exc
@@ -141,7 +141,7 @@ class UsbTransport:
 
         device = self._device
         try:
-            device.release_interface(_DEFAULT_INTERFACE)
+            usb.util.release_interface(device, _DEFAULT_INTERFACE)
             if self._kernel_driver_detached:
                 device.attach_kernel_driver(_DEFAULT_INTERFACE)
         except USBError as exc:

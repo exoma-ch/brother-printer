@@ -1,6 +1,6 @@
 """Tests for UsbTransport open/write/read/close."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from usb.core import USBError
@@ -48,8 +48,10 @@ def _make_usb_device(*, kernel_active: bool = False):
     return device, ep_out, ep_in
 
 
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_open_write_read_close(mock_find):
+def test_usb_transport_open_write_read_close(mock_find, mock_claim, mock_release):
     """UsbTransport performs bulk I/O after open."""
     device, ep_out, ep_in = _make_usb_device()
     mock_find.return_value = [device]
@@ -63,14 +65,18 @@ def test_usb_transport_open_write_read_close(mock_find):
     transport.close()
 
     device.set_configuration.assert_called_once()
-    device.claim_interface.assert_called_once_with(0)
+    mock_claim.assert_called_once_with(device, 0)
     ep_out.write.assert_called_once()
     ep_in.read.assert_called_once()
-    device.release_interface.assert_called_once_with(0)
+    mock_release.assert_called_once_with(device, 0)
 
 
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_detaches_kernel_driver_when_active(mock_find):
+def test_usb_transport_detaches_kernel_driver_when_active(
+    mock_find, mock_claim, mock_release
+):
     """UsbTransport detaches an active kernel driver before claiming."""
     device, _, _ = _make_usb_device(kernel_active=True)
     mock_find.return_value = [device]
@@ -80,11 +86,15 @@ def test_usb_transport_detaches_kernel_driver_when_active(mock_find):
     transport.close()
 
     device.detach_kernel_driver.assert_called_once_with(0)
+    device.assert_has_calls([call.detach_kernel_driver(0), call.set_configuration()])
+    mock_claim.assert_called_once_with(device, 0)
     device.attach_kernel_driver.assert_called_once_with(0)
 
 
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_context_manager(mock_find):
+def test_usb_transport_context_manager(mock_find, mock_claim, mock_release):
     """UsbTransport works as a context manager."""
     device, ep_out, ep_in = _make_usb_device()
     mock_find.return_value = [device]
@@ -95,7 +105,7 @@ def test_usb_transport_context_manager(mock_find):
         assert transport.write(b"\x00") == 1
         assert transport.read(1) == b"\xff"
 
-    device.release_interface.assert_called_once_with(0)
+    mock_release.assert_called_once_with(device, 0)
 
 
 @patch("brother_printer.transport.usb.usb.core.find")
@@ -108,8 +118,9 @@ def test_usb_transport_open_raises_when_device_missing(mock_find):
         transport.open()
 
 
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_write_maps_usb_error(mock_find):
+def test_usb_transport_write_maps_usb_error(mock_find, mock_claim):
     """UsbTransport.write() maps pyusb errors to transport exceptions."""
     device, ep_out, _ = _make_usb_device()
     mock_find.return_value = [device]
@@ -122,8 +133,9 @@ def test_usb_transport_write_maps_usb_error(mock_find):
         transport.write(b"\x00")
 
 
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_read_respects_timeout(mock_find):
+def test_usb_transport_read_respects_timeout(mock_find, mock_claim):
     """UsbTransport.read() passes timeout to bulk IN endpoint."""
     device, _, ep_in = _make_usb_device()
     mock_find.return_value = [device]
@@ -136,8 +148,10 @@ def test_usb_transport_read_respects_timeout(mock_find):
     ep_in.read.assert_called_once_with(64, 250)
 
 
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
 @patch("brother_printer.transport.usb.usb.core.find")
-def test_usb_transport_close_is_idempotent(mock_find):
+def test_usb_transport_close_is_idempotent(mock_find, mock_claim, mock_release):
     """UsbTransport.close() can be called multiple times safely."""
     device, _, _ = _make_usb_device()
     mock_find.return_value = [device]
@@ -147,4 +161,4 @@ def test_usb_transport_close_is_idempotent(mock_find):
     transport.close()
     transport.close()
 
-    device.release_interface.assert_called_once()
+    mock_release.assert_called_once()
