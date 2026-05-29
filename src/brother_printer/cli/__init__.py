@@ -1,4 +1,5 @@
-"""Command-line entry points for brother-printer.
+"""Command-line entry points for brother-printer."""
 
-See issues #7 and #8.
-"""
+from brother_printer.cli.main import main
+
+__all__ = ["main"]

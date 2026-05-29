@@ -3,7 +3,13 @@ name = "brother_printer"
 version = "0.1.0"
 description = "Open-source CLI and library for Brother PT-E920BT label printing"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "click>=8.1",
+    "pyusb>=1.2",
+]
+
+[project.scripts]
+brother-printer = "brother_printer.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -11,6 +17,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/brother_printer"]
+
+[tool.pytest.ini_options]
+markers = [
+    "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PRINTER_HARDWARE=1)",
+]
 
 [dependency-groups]
 dev = [

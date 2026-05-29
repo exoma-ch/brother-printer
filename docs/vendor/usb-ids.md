@@ -1,6 +1,6 @@
 # USB identifiers — PT-E920BT
 
-Canonical USB facts for the PT-E920BT. Resolve the product ID on live hardware in
+Canonical USB facts for the PT-E920BT. Product ID confirmed on live hardware in
 issue [#4](https://github.com/exoma-ch/brother-printer/issues/4).
 
 ## Identifiers
@@ -8,7 +8,7 @@ issue [#4](https://github.com/exoma-ch/brother-printer/issues/4).
 | Field | Value | Source |
 | --- | --- | --- |
 | Vendor ID (USB) | `0x04F9` (Brother Industries, Ltd.) | Raster Command Reference, Appendix A — USB Specifications ([ptouch-raster-command-reference.md](ptouch-raster-command-reference.md), family doc) |
-| Product ID (USB) | **TBD** — not published for PT-E920BT | Resolve via `lsusb` on connected hardware ([#4](https://github.com/exoma-ch/brother-printer/issues/4)) |
+| Product ID (USB) | `0x224B` | Observed on hardware via `lsusb` ([#4](https://github.com/exoma-ch/brother-printer/issues/4), 2026-05-28) |
 | USB version | USB 2.0 Full Speed | User's Guide, Appendix > Specifications > Interface ([pt-e920bt-user-guide.md](pt-e920bt-user-guide.md)) |
 | Connector | USB Type-C | User's Guide, Appendix > Specifications > Interface |
 | Device class | Printer (USB printer class) | Raster Command Reference, Appendix A (family PT-P900/P910BT; PT-E920BT assumed same class) |
@@ -29,7 +29,7 @@ Do **not** assume the PT-E920BT shares any of these values.
 ## Interface descriptors (family reference)
 
 From Raster Command Reference, Appendix A — USB Specifications (PT-P900/P910BT family).
-Expected to match other Brother label printers; confirm on hardware in #4.
+Confirmed on PT-E920BT hardware ([#4](https://github.com/exoma-ch/brother-printer/issues/4), 2026-05-28).
 
 | Item | Value |
 | --- | --- |
@@ -46,8 +46,7 @@ Expected to match other Brother label printers; confirm on hardware in #4.
 ## Discovery notes
 
 ```bash
-# Example — replace xxxx with observed PID
-lsusb -d 04f9:xxxx
+lsusb -d 04f9:224b
 ```
 
 Brother VID `04f9` is shared across the product line; always match on PID **and** product

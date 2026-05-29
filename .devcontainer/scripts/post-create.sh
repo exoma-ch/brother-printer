@@ -25,6 +25,16 @@ fi
 # Set venv prompt
 sed -i 's/template-project/brother_printer/g' /root/assets/workspace/.venv/bin/activate
 
+# Console scripts (e.g. brother-printer) live in the pre-built venv but are not on PATH by default.
+VENV_BIN="/root/assets/workspace/.venv/bin"
+if [[ -d "$VENV_BIN" ]] && ! grep -qF "$VENV_BIN" /root/.bashrc 2>/dev/null; then
+    cat >> /root/.bashrc <<EOF
+
+# Project venv (brother-printer and other console scripts)
+export PATH="${VENV_BIN}:\$PATH"
+EOF
+fi
+
 # One-time setup: git repo, config, hooks, gh auth
 "$SCRIPT_DIR/init-git.sh"
 "$SCRIPT_DIR/setup-git-conf.sh"
@@ -37,5 +47,10 @@ just --justfile "$PROJECT_ROOT/justfile" --working-directory "$PROJECT_ROOT" syn
 
 # User specific setup
 # Add your custom setup commands here to install any dependencies or tools needed for your project
+
+# PT-E920BT USB hardware verification needs the libusb backend (issue #4).
+# pyusb talks to libusb-1.0 via ctypes; the base image does not ship it.
+echo "Installing libusb backend for USB hardware tests..."
+apt-get update && apt-get install -y --no-install-recommends libusb-1.0-0
 
 echo "Post-create setup complete"

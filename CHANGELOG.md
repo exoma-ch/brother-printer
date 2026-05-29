@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Downstream `promote-release.yml` workflow** ([#463](https://github.com/vig-os/devcontainer/issues/463))
   - Template at `.github/workflows/promote-release.yml`: validate draft release and release PR, publish release, merge to `main`, best-effort git RC tag cleanup
 
+- **USB transport layer with discover** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - `Transport` protocol, `UsbTransport` via pyusb, and `discover()` for PT-E920BT
+  - `brother-printer discover` CLI subcommand (Click)
+  - udev sample rule and Linux USB setup guide under `docs/install/linux-usb.md`
+  - Devcontainer USB passthrough (`/dev/bus/usb`) and libusb backend for hardware verification
+  - Opt-in `just test-hardware` pytest marker for connected PT-E920BT smoke tests
+  - Devcontainer udev rule (`99-brother-ptouch_devcontainer.rules`) for rootless Podman USB permissions
+  - Project venv console scripts on PATH inside devcontainer
+  - PT-E920BT USB product ID confirmed as 0x224B on live hardware
+  - `just discover` recipe for USB printer enumeration
+
 ### Changed
 
 ### Deprecated
@@ -29,5 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+
+- **USB transport open on kernel-bound devices** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - Detach kernel driver before set_configuration; use pyusb util helpers for claim/release
 
 ### Security
