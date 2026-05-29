@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - PT-E920BT USB product ID confirmed as 0x224B on live hardware
   - `just discover` recipe for USB printer enumeration
 
+- **P-touch raster protocol encoder and status decoder** ([#5](https://github.com/exoma-ch/brother-printer/issues/5))
+  - Pure-function encoder for raster commands and `encode_job()` minimal single-page jobs
+  - 32-byte status reply decoder with TZe tape-width mapping and human-readable error messages
+  - Golden-file tests under `tests/protocol/golden/`
+
 ### Changed
 
 ### Deprecated
