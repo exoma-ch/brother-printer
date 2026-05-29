@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Opt-in `just test-hardware` pytest marker for connected PT-E920BT smoke tests
   - Devcontainer udev rule (`99-brother-ptouch_devcontainer.rules`) for rootless Podman USB permissions
   - Project venv console scripts on PATH inside devcontainer
+  - PT-E920BT USB product ID confirmed as 0x224B on live hardware
 
 ### Changed
 

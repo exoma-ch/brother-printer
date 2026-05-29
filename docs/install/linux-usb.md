@@ -22,6 +22,12 @@ uv sync
 # or: pip install .
 ```
 
+Run the CLI via `uv run` (or activate the project venv first):
+
+```bash
+uv run brother-printer --help
+```
+
 ## udev rules (non-root access)
 
 Copy the sample rule from this repository:
@@ -43,7 +49,7 @@ sudo usermod -aG plugdev "$USER"
 Connect the PT-E920BT over USB, then:
 
 ```bash
-brother-printer discover
+uv run brother-printer discover
 ```
 
 Expected output (one line per printer):
@@ -63,7 +69,9 @@ or I/O). Configuration lives in
 volumes:
   - /dev/bus/usb:/dev/bus/usb
 group_add:
-  - plugdev
+  - keep-groups
+device_cgroup_rules:
+  - c 189:* rwm
 ```
 
 The libusb backend is installed on container create via
@@ -71,10 +79,33 @@ The libusb backend is installed on container create via
 
 ### Host setup (run on the Linux host, not inside the container)
 
-1. Install the udev rule (see above) and replug the printer.
-2. Confirm the device appears: `lsusb -d 04f9:`
-3. Check permissions on the device node:
-   `ls -l /dev/bus/usb/<bus>/<device>` and optionally `getfacl` on that path.
+1. Install the **devcontainer udev rule** (rootless Podman remaps USB nodes to
+   `nobody:nogroup` inside the container; mode `0664` leaves container processes
+   with read-only access). From the repo root:
+
+   ```bash
+   sudo cp packaging/udev/99-brother-ptouch_devcontainer.rules /etc/udev/rules.d/
+   sudo udevadm control --reload && sudo udevadm trigger
+   ```
+
+   Unplug and replug the printer. Confirm world-writable access on the host:
+
+   ```bash
+   lsusb | grep -i 04f9                    # note Bus and Device numbers
+   ls -l /dev/bus/usb/<bus>/<device>       # expect crw-rw-rw-
+   ```
+
+   If mode is still `664`, the standard rule may have loaded after the
+   devcontainer rule — remove the old hyphenated copy if present, ensure only
+   `99-brother-ptouch.rules` and `99-brother-ptouch_devcontainer.rules` are
+   installed (the `_devcontainer` suffix sorts last and wins).
+
+   For normal (non-container) CLI use on the host, keep
+   [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules)
+   (`0664` + `plugdev`) instead.
+
+2. Confirm the device appears: `lsusb -d 04f9:` (PT-E920BT is `04f9:224b`).
+3. Check permissions on the device node after replug.
 
 ### Recreate the devcontainer
 
@@ -95,7 +126,7 @@ uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
 test -d /dev/bus/usb && ls /dev/bus/usb
 
 # Library discovery
-brother-printer discover
+uv run brother-printer discover
 
 # Opt-in hardware tests (requires a connected printer)
 just test-hardware
@@ -103,20 +134,24 @@ just test-hardware
 
 ### Permission fallbacks (rootless Podman)
 
-If `discover` works but `UsbTransport.open()` fails with permission denied:
+If enumeration finds the device (`lsusb`, pyusb `find`) but `discover` returns
+nothing or `open()` fails with permission denied, the bind-mounted node is
+likely `nobody:nogroup` with mode `0664` (container processes only get
+`other::r--`):
 
-1. **uaccess (preferred):** the shipped udev rule sets `TAG+="uaccess"` so the
-   active desktop session user gets an ACL on the device node.
-2. **plugdev group:** add your host user to `plugdev`, log out/in, and ensure
-   `group_add: plugdev` is present in the compose override.
-3. **Temporary dev-only rule:** `MODE="0666"` on the udev rule for local
-   debugging only — do not commit that change.
+1. **Devcontainer udev rule (recommended for dev):** install
+   [99-brother-ptouch_devcontainer.rules](../../packaging/udev/99-brother-ptouch_devcontainer.rules)
+   (`MODE="0666"`), replug, verify `crw-rw-rw-` on the host node.
+2. **One-off test without udev change:** `sudo chmod 666 /dev/bus/usb/<bus>/<device>`
+   (lost on replug).
+3. **Normal host CLI:** use [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules)
+   with `plugdev` group membership — not sufficient alone inside rootless Podman.
 
 ## Troubleshooting
 
 ### Permission denied
 
-If `brother-printer discover` or transport open fails with a permission error,
+If `uv run brother-printer discover` or transport open fails with a permission error,
 install the udev rule above and confirm group membership. The CLI error message
 includes a pointer to this document.
 
