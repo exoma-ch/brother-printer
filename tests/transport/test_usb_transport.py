@@ -162,3 +162,22 @@ def test_usb_transport_close_is_idempotent(mock_find, mock_claim, mock_release):
     transport.close()
 
     mock_release.assert_called_once()
+
+
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
+@patch("brother_printer.transport.usb.usb.core.find")
+def test_usb_transport_read_exact_retries_until_enough_bytes(
+    mock_find, mock_claim, mock_release
+):
+    """read_exact() keeps reading until n bytes arrive (empty reads are retried)."""
+    device, ep_out, ep_in = _make_usb_device()
+    mock_find.return_value = [device]
+    status = b"\x80\x20" + b"\x00" * 30
+    ep_in.read.side_effect = [b"", status]
+
+    transport = UsbTransport(_printer_info())
+    transport.open()
+    assert transport.read_exact(32, timeout_ms=5000) == status
+    assert ep_in.read.call_count == 2
+    transport.close()

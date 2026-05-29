@@ -3,6 +3,8 @@
 USB identifiers: see docs/vendor/usb-ids.md
 """
 
+import time
+
 import usb.core
 import usb.util
 from usb.core import NoBackendError, USBError
@@ -91,6 +93,8 @@ def discover() -> list[PrinterInfo]:
 
 _DEFAULT_INTERFACE = 0
 _DEFAULT_TIMEOUT_MS = 5000
+# Bulk IN max packet — see docs/vendor/usb-ids.md
+_BULK_IN_MAX_PACKET = 64
 
 
 class UsbTransport:
@@ -172,6 +176,23 @@ class UsbTransport:
             return bytes(data)
         except USBError as exc:
             raise map_usb_error(exc) from exc
+
+    def read_exact(self, n: int, timeout_ms: int | None = None) -> bytes:
+        """Read exactly n bytes, retrying until timeout (handles delayed USB replies)."""
+        total_timeout = self._default_timeout_ms if timeout_ms is None else timeout_ms
+        deadline = time.monotonic() + total_timeout / 1000.0
+        buf = b""
+        while len(buf) < n:
+            remaining_ms = int((deadline - time.monotonic()) * 1000)
+            if remaining_ms <= 0:
+                raise TransportTimeoutError(
+                    f"timed out reading {n} bytes (got {len(buf)})"
+                )
+            chunk_size = max(n - len(buf), _BULK_IN_MAX_PACKET)
+            chunk = self.read(chunk_size, timeout_ms=min(500, remaining_ms))
+            if chunk:
+                buf += chunk
+        return buf[:n]
 
     def __enter__(self) -> "UsbTransport":
         self.open()

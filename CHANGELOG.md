@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - PT-E920BT USB product ID confirmed as 0x224B on live hardware
   - `just discover` recipe for USB printer enumeration
 
+- **P-touch raster protocol encoder and status decoder** ([#5](https://github.com/exoma-ch/brother-printer/issues/5))
+  - Pure-function encoder for raster commands and `encode_job()` minimal single-page jobs
+  - 32-byte status reply decoder with TZe tape-width mapping and human-readable error messages
+  - Golden-file tests under `tests/protocol/golden/`
+  - Opt-in hardware print smoke test (`just test-hardware`) validates `encode_job()` on a connected PT-E920BT
+
 ### Changed
 
 ### Deprecated
@@ -40,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+
+- **Single-page encode_job() feed and auto-cut on hardware** ([#5](https://github.com/exoma-ch/brother-printer/issues/5))
+  - Default to no-chain mode so labels feed out and auto-cut after the last page
+  - Hardware print smoke test uses 60 raster lines (above the 57-dot TZe minimum)
 
 - **USB transport open on kernel-bound devices** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
   - Detach kernel driver before set_configuration; use pyusb util helpers for claim/release

@@ -1,4 +1,74 @@
 """P-touch raster protocol: pure encode/decode functions.
 
-See issue #5.
+See docs/vendor/ptouch-raster-command-reference.md and issue #5.
 """
+
+from brother_printer.protocol.constants import (
+    RASTER_LINE_BYTES,
+    STATUS_REPLY_SIZE,
+    STATUS_USB_READ_SIZE,
+)
+from brother_printer.protocol.decoder import (
+    PrinterStatus,
+    decode_status,
+    extract_status_reply,
+)
+from brother_printer.protocol.encoder import (
+    advanced_mode,
+    eject,
+    encode_job,
+    initialize,
+    invalidate,
+    print_information,
+    print_page,
+    raster_line,
+    select_compression,
+    set_margin,
+    set_mode,
+    status_request,
+    switch_raster_mode,
+    zero_raster,
+)
+from brother_printer.protocol.enums import (
+    ErrorInfo1,
+    ErrorInfo2,
+    MediaType,
+    Notification,
+    PhaseType,
+    StatusType,
+    TapeColor,
+    TapeWidth,
+    decode_error_messages,
+)
+
+__all__ = [
+    "ErrorInfo1",
+    "ErrorInfo2",
+    "MediaType",
+    "Notification",
+    "PhaseType",
+    "PrinterStatus",
+    "RASTER_LINE_BYTES",
+    "STATUS_REPLY_SIZE",
+    "STATUS_USB_READ_SIZE",
+    "StatusType",
+    "TapeColor",
+    "TapeWidth",
+    "advanced_mode",
+    "decode_error_messages",
+    "decode_status",
+    "extract_status_reply",
+    "eject",
+    "encode_job",
+    "initialize",
+    "invalidate",
+    "print_information",
+    "print_page",
+    "raster_line",
+    "select_compression",
+    "set_margin",
+    "set_mode",
+    "status_request",
+    "switch_raster_mode",
+    "zero_raster",
+]
