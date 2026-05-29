@@ -146,7 +146,7 @@ def encode_job(
     auto_cut: bool = True,
     margin_dots: int = 14,
     half_cut: bool = False,
-    no_chain: bool = False,
+    no_chain: bool = True,
     compression: int = 0,
 ) -> bytes:
     """Assemble a minimal single-page print job byte stream."""
