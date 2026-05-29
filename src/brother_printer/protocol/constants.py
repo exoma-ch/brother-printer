@@ -36,6 +36,8 @@ RASTER_LINE_BYTES = 70
 
 # 32-byte status reply layout
 STATUS_REPLY_SIZE = 32
+# Bulk IN max packet size (docs/vendor/usb-ids.md); read this many bytes over USB
+STATUS_USB_READ_SIZE = 64
 STATUS_HEADER_MARK = 0x80
 STATUS_SIZE_BYTE = 0x20
 STATUS_OFFSET_ERROR1 = 8

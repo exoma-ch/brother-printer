@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from brother_printer.protocol.decoder import decode_status
+from brother_printer.protocol.decoder import decode_status, extract_status_reply
 from brother_printer.protocol.enums import (
     MediaType,
     Notification,
@@ -53,6 +53,19 @@ def _build_status(
     data[22] = notification
     data[24] = tape_color
     return bytes(data)
+
+
+def test_extract_status_reply_from_usb_buffer():
+    """extract_status_reply() takes the first 32 bytes from a 64-byte USB read."""
+    status = _build_status()
+    usb_buffer = status + b"\x00" * 32
+    assert extract_status_reply(usb_buffer) == status
+
+
+def test_extract_status_reply_rejects_short_buffer():
+    """extract_status_reply() requires at least 32 bytes."""
+    with pytest.raises(ValueError, match="32 bytes"):
+        extract_status_reply(b"\x80\x20")
 
 
 def test_decode_status_golden():

@@ -3,8 +3,16 @@
 See docs/vendor/ptouch-raster-command-reference.md and issue #5.
 """
 
-from brother_printer.protocol.constants import RASTER_LINE_BYTES, STATUS_REPLY_SIZE
-from brother_printer.protocol.decoder import PrinterStatus, decode_status
+from brother_printer.protocol.constants import (
+    RASTER_LINE_BYTES,
+    STATUS_REPLY_SIZE,
+    STATUS_USB_READ_SIZE,
+)
+from brother_printer.protocol.decoder import (
+    PrinterStatus,
+    decode_status,
+    extract_status_reply,
+)
 from brother_printer.protocol.encoder import (
     advanced_mode,
     eject,
@@ -42,12 +50,14 @@ __all__ = [
     "PrinterStatus",
     "RASTER_LINE_BYTES",
     "STATUS_REPLY_SIZE",
+    "STATUS_USB_READ_SIZE",
     "StatusType",
     "TapeColor",
     "TapeWidth",
     "advanced_mode",
     "decode_error_messages",
     "decode_status",
+    "extract_status_reply",
     "eject",
     "encode_job",
     "initialize",

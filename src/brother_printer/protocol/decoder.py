@@ -46,6 +46,14 @@ class PrinterStatus:
     tape_color: TapeColor
 
 
+def extract_status_reply(data: bytes) -> bytes:
+    """Take the 32-byte status payload from a USB bulk IN read buffer."""
+    if len(data) < STATUS_REPLY_SIZE:
+        msg = f"status buffer must be at least {STATUS_REPLY_SIZE} bytes"
+        raise ValueError(msg)
+    return data[:STATUS_REPLY_SIZE]
+
+
 def decode_status(data: bytes) -> PrinterStatus:
     """Parse a 32-byte status reply into a PrinterStatus."""
     if len(data) != STATUS_REPLY_SIZE:
