@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - udev sample rule and Linux USB setup guide under `docs/install/linux-usb.md`
   - Devcontainer USB passthrough (`/dev/bus/usb`) and libusb backend for hardware verification
   - Opt-in `just test-hardware` pytest marker for connected PT-E920BT smoke tests
+  - Devcontainer udev rule (`99-brother-ptouch_devcontainer.rules`) for rootless Podman USB permissions
+  - Project venv console scripts on PATH inside devcontainer
 
 ### Changed
 
