@@ -58,11 +58,13 @@ def _mock_transport() -> MagicMock:
 @patch("brother_printer.printing.encode_job")
 @patch("brother_printer.printing.image_to_raster")
 @patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.status_request", return_value=b"\x1biS")
 @patch("brother_printer.printing.UsbTransport")
 @patch("brother_printer.printing.discover")
 def test_print_image_writes_job_for_each_copy(
     mock_discover,
     mock_transport_cls,
+    mock_status_request,
     mock_decode_status,
     mock_image_to_raster,
     mock_encode_job,
@@ -90,7 +92,8 @@ def test_print_image_writes_job_for_each_copy(
     )
 
     mock_transport_cls.assert_called_once_with(printer)
-    transport.write.assert_any_call(b"\x00" * 32)  # status_request payload mocked
+    mock_status_request.assert_called_once_with()
+    transport.write.assert_any_call(b"\x1biS")
     mock_image_to_raster.assert_called_once_with(
         image,
         TapeWidth.MM_24,
@@ -201,7 +204,7 @@ def test_print_image_raises_when_no_tape_loaded(
     mock_transport_cls.return_value = _mock_transport()
     mock_decode_status.return_value = _ready_status(tape=None)  # type: ignore[arg-type]
 
-    with pytest.raises(PrinterNotReadyError, match="no tape"):
+    with pytest.raises(PrinterNotReadyError, match="No tape loaded"):
         print_image(Image.new("L", (1, 1), 255), TapeWidth.MM_24)
 
 
