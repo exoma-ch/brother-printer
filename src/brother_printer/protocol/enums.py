@@ -27,6 +27,11 @@ class TapeWidth(IntEnum):
         """Printable pin count at 360 dpi (docs/vendor/tze-tape-widths.md)."""
         return _TAPE_WIDTH_PINS[self]
 
+    @property
+    def print_area_left_pins(self) -> int:
+        """Left margin pin count at 360 dpi (docs/vendor/tze-tape-widths.md)."""
+        return _TAPE_WIDTH_LEFT_PINS[self]
+
     @classmethod
     def from_byte(cls, value: int) -> "TapeWidth | None":
         """Map a status-reply media-width byte; None means no tape or unknown."""
@@ -56,6 +61,16 @@ _TAPE_WIDTH_PINS: dict[TapeWidth, int] = {
     TapeWidth.MM_18: 234,
     TapeWidth.MM_24: 320,
     TapeWidth.MM_36: 454,
+}
+
+_TAPE_WIDTH_LEFT_PINS: dict[TapeWidth, int] = {
+    TapeWidth.MM_3_5: 248,
+    TapeWidth.MM_6: 240,
+    TapeWidth.MM_9: 219,
+    TapeWidth.MM_12: 197,
+    TapeWidth.MM_18: 155,
+    TapeWidth.MM_24: 112,
+    TapeWidth.MM_36: 45,
 }
 
 
