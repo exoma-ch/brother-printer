@@ -33,6 +33,7 @@ ADV_NO_CHAIN = 0x08
 
 # Raster line payload (560 pins / 8)
 RASTER_LINE_BYTES = 70
+HEAD_PINS = RASTER_LINE_BYTES * 8
 
 # 32-byte status reply layout
 STATUS_REPLY_SIZE = 32

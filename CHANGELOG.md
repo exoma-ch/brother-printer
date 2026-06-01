@@ -39,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Golden-file tests under `tests/protocol/golden/`
   - Opt-in hardware print smoke test (`just test-hardware`) validates `encode_job()` on a connected PT-E920BT
 
+- **Image-to-raster pipeline tuned for QR code quality** ([#6](https://github.com/exoma-ch/brother-printer/issues/6))
+  - `image_to_raster()` converts PIL images to 70-byte raster lines centered on the print head
+  - Strict threshold conversion (no dithering), integer nearest-neighbor scaling, rotation, and margin support
+  - Rejects non-integer scale factors that would distort QR modules; `TapeWidth.print_area_left_pins` for head positioning
+  - Unit tests with synthetic checkerboard patterns under `tests/imaging/`
+
 ### Changed
 
 ### Deprecated

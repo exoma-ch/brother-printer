@@ -1,6 +1,7 @@
 """Tests for P-touch raster protocol constants."""
 
 from brother_printer.protocol.constants import (
+    HEAD_PINS,
     CMD_ADVANCED_MODE,
     CMD_COMPRESSION,
     CMD_EJECT,
@@ -55,6 +56,12 @@ def test_invalidate_count():
 def test_raster_line_bytes():
     """Uncompressed raster lines are 70 bytes (560 pins / 8)."""
     assert RASTER_LINE_BYTES == 70
+
+
+def test_head_pins():
+    """Print head width is derived from raster line byte count."""
+    assert HEAD_PINS == RASTER_LINE_BYTES * 8
+    assert HEAD_PINS == 560
 
 
 def test_status_reply_layout():
