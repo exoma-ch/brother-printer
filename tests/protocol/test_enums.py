@@ -12,22 +12,23 @@ from brother_printer.protocol.enums import (
 
 
 @pytest.mark.parametrize(
-    ("width", "mm", "pins", "byte_val"),
+    ("width", "mm", "pins", "left_pins", "byte_val"),
     [
-        (TapeWidth.MM_3_5, 3.5, 48, 0x04),
-        (TapeWidth.MM_6, 6, 64, 0x06),
-        (TapeWidth.MM_9, 9, 106, 0x09),
-        (TapeWidth.MM_12, 12, 150, 0x0C),
-        (TapeWidth.MM_18, 18, 234, 0x12),
-        (TapeWidth.MM_24, 24, 320, 0x18),
-        (TapeWidth.MM_36, 36, 454, 0x24),
+        (TapeWidth.MM_3_5, 3.5, 48, 248, 0x04),
+        (TapeWidth.MM_6, 6, 64, 240, 0x06),
+        (TapeWidth.MM_9, 9, 106, 219, 0x09),
+        (TapeWidth.MM_12, 12, 150, 197, 0x0C),
+        (TapeWidth.MM_18, 18, 234, 155, 0x12),
+        (TapeWidth.MM_24, 24, 320, 112, 0x18),
+        (TapeWidth.MM_36, 36, 454, 45, 0x24),
     ],
 )
-def test_tape_width_properties(width, mm, pins, byte_val):
+def test_tape_width_properties(width, mm, pins, left_pins, byte_val):
     """TapeWidth maps to spec byte values and printable pin counts."""
     assert width.value == byte_val
     assert width.mm == mm
     assert width.print_area_pins == pins
+    assert width.print_area_left_pins == left_pins
 
 
 def test_tape_width_from_byte():
