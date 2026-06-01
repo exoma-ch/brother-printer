@@ -1,8 +1,9 @@
 """Generate QR PNG fixtures sized for each TZe tape width.
 
-Each image height equals ``TapeWidth.print_area_pins`` so ``image_to_raster()``
-uses an integer scale factor of 1 (QR-safe). Width is at least 60 dots to meet
-the vendor minimum print length for TZe tape.
+Each fixture is a square canvas with side ``TapeWidth.print_area_pins`` so
+``image_to_raster()`` uses an integer scale factor of 1 (QR-safe) and remains
+rotatable. A solid black bar along the top edge makes rotation visible on
+hardware (after ``rotate=90`` the bar appears on a side edge).
 
 Run via::
 
@@ -14,12 +15,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import qrcode
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from brother_printer.protocol.enums import TapeWidth
 
 _ASSETS_DIR = Path(__file__).resolve().parent
-_MIN_RASTER_LINES = 60
 
 _TAPE_FILENAMES: dict[TapeWidth, str] = {
     TapeWidth.MM_3_5: "qr_3.5mm.png",
@@ -32,8 +32,14 @@ _TAPE_FILENAMES: dict[TapeWidth, str] = {
 }
 
 
-def _render_qr(data: str, *, height: int, width: int) -> Image.Image:
-    qr_size = min(height, width)
+def _bar_height(size: int) -> int:
+    return max(2, size // 12)
+
+
+def _render_qr(data: str, *, size: int) -> Image.Image:
+    """Render a square fixture with a top orientation bar and centered QR."""
+    bar = _bar_height(size)
+    qr_size = size - bar
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -45,10 +51,12 @@ def _render_qr(data: str, *, height: int, width: int) -> Image.Image:
     qr_image = qr.make_image(fill_color="black", back_color="white").convert("L")
     qr_image = qr_image.resize((qr_size, qr_size), resample=Image.Resampling.NEAREST)
 
-    canvas = Image.new("L", (width, height), 255)
-    offset_x = (width - qr_size) // 2
-    offset_y = (height - qr_size) // 2
-    canvas.paste(qr_image, (offset_x, offset_y))
+    canvas = Image.new("L", (size, size), 255)
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle((0, 0, size - 1, bar - 1), fill=0)
+
+    offset_x = (size - qr_size) // 2
+    canvas.paste(qr_image, (offset_x, bar))
     return canvas
 
 
@@ -59,10 +67,9 @@ def generate_all(output_dir: Path | None = None) -> list[Path]:
     written: list[Path] = []
 
     for tape_width, filename in _TAPE_FILENAMES.items():
-        height = tape_width.print_area_pins
-        width = max(height, _MIN_RASTER_LINES)
+        size = tape_width.print_area_pins
         data = f"brother-printer hardware test {tape_width.mm:g}mm"
-        image = _render_qr(data, height=height, width=width)
+        image = _render_qr(data, size=size)
         path = target_dir / filename
         image.save(path)
         written.append(path)

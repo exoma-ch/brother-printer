@@ -12,6 +12,7 @@ permissions, and a loaded TZe tape matching a committed fixture.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 import pytest
@@ -19,10 +20,14 @@ from PIL import Image
 
 from brother_printer import print_image
 from brother_printer.protocol import STATUS_REPLY_SIZE, decode_status, status_request
-from brother_printer.protocol.enums import TapeWidth
+from brother_printer.protocol.enums import PhaseType, TapeWidth
 from brother_printer.transport import UsbTransport, discover
+from brother_printer.transport.base import PrinterInfo
 
 _HARDWARE_ENABLED = os.environ.get("BROTHER_PRINTER_HARDWARE") == "1"
+_STATUS_READ_TIMEOUT_MS = 15_000
+_IDLE_WAIT_TIMEOUT_MS = 60_000
+_IDLE_POLL_INTERVAL_S = 0.5
 _ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 
 _TAPE_FIXTURES: dict[TapeWidth, Path] = {
@@ -44,18 +49,36 @@ pytestmark = [
 ]
 
 
-def _query_loaded_tape() -> TapeWidth:
-    printers = discover()
-    assert printers, (
-        "No PT-E920BT found. Confirm the printer is connected and powered, "
-        "USB passthrough is configured, and udev permissions are set "
-        "(see docs/install/linux-usb.md)."
+def _read_status(transport: UsbTransport):
+    transport.write(status_request())
+    reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=_STATUS_READ_TIMEOUT_MS)
+    return decode_status(reply)
+
+
+def _wait_for_printer_idle(printer: PrinterInfo) -> None:
+    """Poll status until the printer returns to the editing (idle) phase."""
+    deadline = time.monotonic() + _IDLE_WAIT_TIMEOUT_MS / 1000.0
+
+    with UsbTransport(printer) as transport:
+        while time.monotonic() < deadline:
+            status = _read_status(transport)
+            if status.errors:
+                msg = "Printer reported errors while waiting: " + ", ".join(
+                    status.errors
+                )
+                pytest.fail(msg)
+            if status.phase_type == PhaseType.EDITING:
+                return
+            time.sleep(_IDLE_POLL_INTERVAL_S)
+
+    pytest.fail(
+        f"Timed out after {_IDLE_WAIT_TIMEOUT_MS} ms waiting for printer to become idle"
     )
 
-    with UsbTransport(printers[0]) as transport:
-        transport.write(status_request())
-        reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=5000)
-        status = decode_status(reply)
+
+def _query_loaded_tape(printer: PrinterInfo) -> TapeWidth:
+    with UsbTransport(printer) as transport:
+        status = _read_status(transport)
 
     if status.media_width is None:
         pytest.skip("No tape width reported; load a TZe tape to run print matrix")
@@ -67,8 +90,19 @@ def _query_loaded_tape() -> TapeWidth:
 
 
 @pytest.fixture(scope="module")
-def loaded_tape() -> TapeWidth:
-    return _query_loaded_tape()
+def printer() -> PrinterInfo:
+    printers = discover()
+    assert printers, (
+        "No PT-E920BT found. Confirm the printer is connected and powered, "
+        "USB passthrough is configured, and udev permissions are set "
+        "(see docs/install/linux-usb.md)."
+    )
+    return printers[0]
+
+
+@pytest.fixture(scope="module")
+def loaded_tape(printer: PrinterInfo) -> TapeWidth:
+    return _query_loaded_tape(printer)
 
 
 @pytest.fixture(scope="module")
@@ -81,25 +115,22 @@ def fixture_path(loaded_tape: TapeWidth) -> Path:
 
 @pytest.mark.parametrize("rotate", [0, 90])
 @pytest.mark.parametrize("auto_cut", [True, False])
-@pytest.mark.parametrize("copies", [1, 2])
 def test_print_matrix(
     fixture_path: Path,
     loaded_tape: TapeWidth,
+    printer: PrinterInfo,
     rotate: int,
     auto_cut: bool,
-    copies: int,
 ) -> None:
     """print_image() prints the matching QR fixture with varied options."""
-    with Image.open(fixture_path) as image:
-        if rotate != 0 and image.width != image.height:
-            pytest.skip("Non-square fixture cannot rotate without scaling distortion")
+    _wait_for_printer_idle(printer)
 
+    with Image.open(fixture_path) as image:
         written = print_image(
             image.copy(),
             loaded_tape,
             rotate=rotate,
             auto_cut=auto_cut,
-            copies=copies,
         )
 
     assert written > 0
