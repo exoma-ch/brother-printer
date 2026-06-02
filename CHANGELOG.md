@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `print_image()` library orchestrator with tape-width safety check against printer status
   - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-test-images`
 
+- **Half-cut label strips and daisy-chained multi-label printing** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
+  - `encode_strip_job()` multi-page encoder with `ESC i A` cut-each-N support; `print_strip()` library API
+  - `brother-printer print` accepts multiple paths or `--csv FILE` for chained strips; `--half-cut`/`--no-half-cut` and `--strip`/`--no-strip`
+  - CSV schema: required `image` column and optional `copies` column (paths relative to the CSV file)
+  - Opt-in hardware test prints a three-label half-cut strip
+
 ### Changed
 
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
