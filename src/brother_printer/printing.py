@@ -7,7 +7,11 @@ from PIL import Image
 from brother_printer.imaging.raster import image_to_raster
 from brother_printer.protocol.constants import STATUS_REPLY_SIZE
 from brother_printer.protocol.decoder import PrinterStatus, decode_status
-from brother_printer.protocol.encoder import encode_job, status_request
+from brother_printer.protocol.encoder import (
+    encode_job,
+    encode_strip_job,
+    status_request,
+)
 from brother_printer.protocol.enums import TapeWidth
 from brother_printer.transport import UsbTransport, discover
 from brother_printer.transport.base import PrinterInfo
@@ -67,6 +71,7 @@ def print_image(
     rotate: int = 0,
     margin: int = 0,
     auto_cut: bool = True,
+    half_cut: bool = False,
     allow_distortion: bool = False,
 ) -> int:
     """Print a PIL image on a connected PT-E920BT."""
@@ -86,9 +91,61 @@ def print_image(
             margin=margin,
             allow_distortion=allow_distortion,
         )
-        job = encode_job(tape_width, raster_lines, auto_cut=auto_cut)
+        job = encode_job(
+            tape_width,
+            raster_lines,
+            auto_cut=auto_cut,
+            half_cut=half_cut,
+        )
 
         written = 0
         for _ in range(copies):
             written += transport.write(job)
         return written
+
+
+def print_strip(
+    images: list[Image.Image],
+    tape_width: TapeWidth,
+    *,
+    printer: str | None = None,
+    copies: int = 1,
+    threshold: int = 128,
+    rotate: int = 0,
+    margin: int = 0,
+    auto_cut: bool = True,
+    half_cut: bool = False,
+    allow_distortion: bool = False,
+) -> int:
+    """Print a chained strip of labels in one multi-page job."""
+    if not images:
+        msg = "images must contain at least one label"
+        raise ValueError(msg)
+
+    selected = _select_printer(discover(), printer)
+
+    with UsbTransport(selected) as transport:
+        transport.write(status_request())
+        reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=5000)
+        status = decode_status(reply)
+        _validate_status(status, tape_width)
+
+        raster_kwargs = {
+            "threshold": threshold,
+            "rotate": rotate,
+            "margin": margin,
+            "allow_distortion": allow_distortion,
+        }
+        pages: list[list[bytes]] = []
+        for image in images:
+            raster_lines = image_to_raster(image, tape_width, **raster_kwargs)
+            for _ in range(copies):
+                pages.append(raster_lines)
+
+        job = encode_strip_job(
+            tape_width,
+            pages,
+            auto_cut=auto_cut,
+            half_cut=half_cut,
+        )
+        return transport.write(job)

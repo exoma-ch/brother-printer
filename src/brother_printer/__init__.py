@@ -5,6 +5,7 @@ from brother_printer.printing import (
     PrinterNotReadyError,
     TapeMismatchError,
     print_image,
+    print_strip,
 )
 from brother_printer.protocol.enums import TapeWidth
 from brother_printer.transport import PrinterInfo, discover
@@ -22,4 +23,5 @@ __all__ = [
     "__version__",
     "discover_printers",
     "print_image",
+    "print_strip",
 ]

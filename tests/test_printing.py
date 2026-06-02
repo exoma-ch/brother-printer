@@ -61,6 +61,126 @@ def _mock_transport() -> MagicMock:
 @patch("brother_printer.printing.status_request", return_value=b"\x1biS")
 @patch("brother_printer.printing.UsbTransport")
 @patch("brother_printer.printing.discover")
+def test_print_image_passes_half_cut(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_job,
+):
+    """print_image() forwards half_cut to encode_job()."""
+    from brother_printer import print_image
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    mock_image_to_raster.return_value = [b"\x00" * 70] * 60
+    mock_encode_job.return_value = b"job-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    print_image(image, TapeWidth.MM_24, half_cut=True, auto_cut=True)
+
+    mock_encode_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        mock_image_to_raster.return_value,
+        auto_cut=True,
+        half_cut=True,
+    )
+
+
+@patch("brother_printer.printing.encode_strip_job")
+@patch("brother_printer.printing.image_to_raster")
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.status_request", return_value=b"\x1biS")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
+def test_print_strip_writes_one_job_for_multiple_images(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """print_strip() rasterizes each image and sends one encoded strip job."""
+    from brother_printer import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    mock_image_to_raster.side_effect = [
+        [b"\x01" * 70] * 2,
+        [b"\x02" * 70] * 3,
+    ]
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    images = [Image.new("L", (80, 80), 255), Image.new("L", (60, 60), 0)]
+    written = print_strip(
+        images,
+        TapeWidth.MM_24,
+        half_cut=True,
+        auto_cut=True,
+        threshold=100,
+        rotate=90,
+        margin=4,
+    )
+
+    assert mock_image_to_raster.call_count == 2
+    mock_encode_strip_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        [[b"\x01" * 70] * 2, [b"\x02" * 70] * 3],
+        auto_cut=True,
+        half_cut=True,
+    )
+    assert transport.write.call_count == 2  # status + strip job
+    assert written == 100
+
+
+@patch("brother_printer.printing.encode_strip_job")
+@patch("brother_printer.printing.image_to_raster")
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.status_request", return_value=b"\x1biS")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
+def test_print_strip_expands_copies_into_pages(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """print_strip() repeats raster pages when copies > 1."""
+    from brother_printer import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    raster = [b"\x00" * 70] * 2
+    mock_image_to_raster.return_value = raster
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    print_strip([image], TapeWidth.MM_24, copies=3)
+
+    mock_encode_strip_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        [raster, raster, raster],
+        auto_cut=True,
+        half_cut=False,
+    )
+
+
+@patch("brother_printer.printing.encode_job")
+@patch("brother_printer.printing.image_to_raster")
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.status_request", return_value=b"\x1biS")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
 def test_print_image_writes_job_for_each_copy(
     mock_discover,
     mock_transport_cls,
@@ -106,6 +226,7 @@ def test_print_image_writes_job_for_each_copy(
         TapeWidth.MM_24,
         mock_image_to_raster.return_value,
         auto_cut=False,
+        half_cut=False,
     )
     assert transport.write.call_count == 3  # status + 2 copies
     assert written == 200
