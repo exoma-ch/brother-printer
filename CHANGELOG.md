@@ -45,7 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Rejects non-integer scale factors that would distort QR modules; `TapeWidth.print_area_left_pins` for head positioning
   - Unit tests with synthetic checkerboard patterns under `tests/imaging/`
 
+- **CLI print command with tape selection and auto-cut** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
+  - `brother-printer print PATH --tape {3.5|6|9|12|18|24|36}mm` with `--auto-cut`/`--no-cut`, `--copies`, `--threshold`, `--rotate`, `--margin`, and `--printer`
+  - `print_image()` library orchestrator with tape-width safety check against printer status
+  - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-test-images`
+
 ### Changed
+
+- **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
+  - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
+  - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image
+  - Print-matrix hardware test waits until the printer is idle and uses longer status timeouts; matrix trimmed to two rotation cases (auto-cut removed because single-page jobs always feed and cut when no-chain is enabled)
 
 ### Deprecated
 

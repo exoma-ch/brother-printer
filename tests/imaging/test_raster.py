@@ -243,3 +243,38 @@ def test_image_to_raster_with_margin_and_rotation():
     margined_lines = image_to_raster(image, TapeWidth.MM_24, margin=20)
     assert len(margined_lines) == 240
     assert all(len(line) == RASTER_LINE_BYTES for line in margined_lines)
+
+
+def _orientation_marker_image(tape: TapeWidth) -> Image.Image:
+    """Square image with a black bar on the top edge (rotation marker)."""
+    size = tape.print_area_pins
+    bar_height = max(2, size // 12)
+    image = Image.new("L", (size, size), 255)
+    pixels = image.load()
+    assert pixels is not None
+    for y in range(bar_height):
+        for x in range(size):
+            pixels[x, y] = 0
+    return image
+
+
+def test_image_to_raster_rotation_changes_raster_bytes():
+    """rotate=90 produces different raster output than rotate=0 for asymmetric images."""
+    image = _orientation_marker_image(TapeWidth.MM_9)
+
+    lines_0 = image_to_raster(image, TapeWidth.MM_9, rotate=0)
+    lines_90 = image_to_raster(image, TapeWidth.MM_9, rotate=90)
+
+    assert lines_0 != lines_90
+
+
+def test_apply_rotation_four_quarter_turns_restores_image():
+    """Four 90-degree rotations return the monochrome image to its original pixels."""
+    image = _orientation_marker_image(TapeWidth.MM_9)
+    mono = to_monochrome(image)
+
+    rotated = mono
+    for _ in range(4):
+        rotated = apply_rotation(rotated, 90)
+
+    assert mono.tobytes() == rotated.tobytes()

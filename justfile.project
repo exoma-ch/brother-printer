@@ -55,6 +55,11 @@ test-cov *args:
 test-hardware *args:
     BROTHER_PRINTER_HARDWARE=1 uv run pytest -m hardware {{ args }}
 
+# Regenerate QR PNG fixtures for hardware print tests (issue #7)
+[group('test')]
+gen-test-images:
+    uv run python tests/hardware/assets/generate_fixtures.py
+
 # -------------------------------------------------------------------------------
 # DEPENDENCIES
 # -------------------------------------------------------------------------------
