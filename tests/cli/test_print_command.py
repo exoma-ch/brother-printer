@@ -142,7 +142,7 @@ def test_print_command_reports_printer_not_ready(mock_print_image):
 @patch("brother_printer.cli.main.print_image")
 def test_print_command_reports_transport_error(mock_print_image):
     """print surfaces transport errors on stderr and exits 1."""
-    from brother_printer.transport.errors import PermissionDeniedError
+    from brother_printer import PermissionDeniedError
 
     mock_print_image.side_effect = PermissionDeniedError("Access denied")
     runner = CliRunner()
