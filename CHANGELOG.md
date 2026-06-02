@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
   - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
   - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image
-  - Print-matrix hardware test waits until the printer is idle and uses longer status timeouts; matrix trimmed to four cases (rotate × auto-cut)
+  - Print-matrix hardware test waits until the printer is idle and uses longer status timeouts; matrix trimmed to two rotation cases (auto-cut removed because single-page jobs always feed and cut when no-chain is enabled)
 
 ### Deprecated
 

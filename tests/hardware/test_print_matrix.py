@@ -1,12 +1,13 @@
 """Opt-in hardware print matrix test for pre-computed QR fixtures.
 
-These tests physically print labels with different option combinations.
+These tests physically print labels at each rotation angle in the matrix.
 They are skipped unless ``BROTHER_PRINTER_HARDWARE=1`` is set. Run with::
 
     just test-hardware tests/hardware/test_print_matrix.py
 
-Each parametrized case consumes tape. Requires USB passthrough, udev
-permissions, and a loaded TZe tape matching a committed fixture.
+Each parametrized case prints one label and consumes tape. Requires USB
+passthrough, udev permissions, and a loaded TZe tape matching a committed
+fixture.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from brother_printer.protocol import STATUS_REPLY_SIZE, decode_status, status_re
 from brother_printer.protocol.enums import PhaseType, TapeWidth
 from brother_printer.transport import UsbTransport, discover
 from brother_printer.transport.base import PrinterInfo
+from brother_printer.transport.errors import TransportTimeoutError
 
 _HARDWARE_ENABLED = os.environ.get("BROTHER_PRINTER_HARDWARE") == "1"
 _STATUS_READ_TIMEOUT_MS = 15_000
@@ -61,7 +63,12 @@ def _wait_for_printer_idle(printer: PrinterInfo) -> None:
 
     with UsbTransport(printer) as transport:
         while time.monotonic() < deadline:
-            status = _read_status(transport)
+            try:
+                status = _read_status(transport)
+            except TransportTimeoutError:
+                # Printer may not reply while printing or cutting; keep polling.
+                time.sleep(_IDLE_POLL_INTERVAL_S)
+                continue
             if status.errors:
                 msg = "Printer reported errors while waiting: " + ", ".join(
                     status.errors
@@ -114,15 +121,13 @@ def fixture_path(loaded_tape: TapeWidth) -> Path:
 
 
 @pytest.mark.parametrize("rotate", [0, 90])
-@pytest.mark.parametrize("auto_cut", [True, False])
 def test_print_matrix(
     fixture_path: Path,
     loaded_tape: TapeWidth,
     printer: PrinterInfo,
     rotate: int,
-    auto_cut: bool,
 ) -> None:
-    """print_image() prints the matching QR fixture with varied options."""
+    """print_image() prints the matching QR fixture at each rotation."""
     _wait_for_printer_idle(printer)
 
     with Image.open(fixture_path) as image:
@@ -130,7 +135,6 @@ def test_print_matrix(
             image.copy(),
             loaded_tape,
             rotate=rotate,
-            auto_cut=auto_cut,
         )
 
     assert written > 0
