@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `brother-printer info tapes` lists supported TZe widths and printable pixel widths at 360 dpi
   - Library API: `query_status()`, `select_printer()`, and `PrinterStatus` re-export; CLI routes through `brother_printer` only ([#18](https://github.com/exoma-ch/brother-printer/issues/18))
 
+- **Half-cut label strips and daisy-chained multi-label printing** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
+  - `encode_strip_job()` multi-page encoder with `ESC i A` cut-each-N support; `print_strip()` library API
+  - `brother-printer print` accepts multiple paths or `--csv FILE` for chained strips; `--half-cut`/`--no-half-cut` and `--strip`/`--no-strip`
+  - CSV schema: required `image` column and optional `copies` column (paths relative to the CSV file)
+  - Opt-in hardware test prints a two-label half-cut strip (laminated tape only)
+  - `HalfCutNotSupportedError` when `half_cut=True` on non-laminated loaded tape; see `docs/vendor/tze-tape-widths.md`
+
 ### Changed
 
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
@@ -68,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+
+- **Half-cut label strips and centered QR on tape** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
+  - Multi-page half-cut strips emit a per-page control block (ESC i z before ESC i K), disable auto-cut, and omit cut-each
+  - Raster packing uses the right-margin head offset per Brother §2.3.5 so images are centered on the tape
 
 - **Single-page encode_job() feed and auto-cut on hardware** ([#5](https://github.com/exoma-ch/brother-printer/issues/5))
   - Default to no-chain mode so labels feed out and auto-cut after the last page

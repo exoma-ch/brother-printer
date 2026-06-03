@@ -8,6 +8,7 @@ from brother_printer.protocol.constants import (
     ADV_NO_CHAIN,
     CMD_ADVANCED_MODE,
     CMD_COMPRESSION,
+    CMD_CUT_EACH,
     CMD_EJECT,
     CMD_INITIALIZE,
     CMD_INVALIDATE_COUNT,
@@ -62,6 +63,14 @@ def set_mode(*, auto_cut: bool = False, mirror: bool = False) -> bytes:
     if mirror:
         flags |= MODE_MIRROR
     return CMD_MODE + bytes([flags])
+
+
+def cut_each(n: int) -> bytes:
+    """Specify page number in cut each * labels (ESC i A)."""
+    if n < 0 or n > 0xFF:
+        msg = "cut each n must be 0..255"
+        raise ValueError(msg)
+    return CMD_CUT_EACH + bytes([n])
 
 
 def print_information(
@@ -139,15 +148,75 @@ def eject() -> bytes:
     return CMD_EJECT
 
 
-def encode_job(
+def encode_strip_job(
     width: TapeWidth,
-    raster_lines: list[bytes],
+    pages: list[list[bytes]],
     *,
     auto_cut: bool = True,
     margin_dots: int = 14,
     half_cut: bool = False,
     no_chain: bool = True,
+    cut_each_n: int | None = None,
     compression: int = 0,
+) -> bytes:
+    """Assemble a multi-page print job byte stream.
+
+    Half-cut strips disable auto-cut and emit a full control block per page.
+    Callers must ensure laminated tape when ``half_cut`` is True; see
+    ``print_strip()`` validation in ``brother_printer.printing``.
+    """
+    if not pages:
+        msg = "pages must contain at least one raster page"
+        raise ValueError(msg)
+
+    if len(pages) == 1:
+        return _encode_single_page_job(
+            width,
+            pages[0],
+            auto_cut=auto_cut,
+            margin_dots=margin_dots,
+            half_cut=half_cut,
+            no_chain=no_chain,
+            compression=compression,
+        )
+
+    page_count = len(pages)
+    effective_auto_cut = auto_cut and not half_cut
+    parts: list[bytes] = []
+
+    for index, raster_lines in enumerate(pages):
+        is_last = index == page_count - 1
+        if index == 0:
+            parts.append(initialize())
+        parts.append(switch_raster_mode())
+        parts.append(print_information(width, len(raster_lines), last_page=is_last))
+        parts.append(set_mode(auto_cut=effective_auto_cut))
+        if effective_auto_cut:
+            resolved_cut_each = page_count if cut_each_n is None else cut_each_n
+            parts.append(cut_each(resolved_cut_each))
+        parts.extend(
+            [
+                advanced_mode(half_cut=half_cut, no_chain=no_chain),
+                set_margin(margin_dots),
+                select_compression(compression),
+            ]
+        )
+        for line in raster_lines:
+            parts.append(raster_line(line))
+        parts.append(eject() if is_last else print_page())
+
+    return b"".join(parts)
+
+
+def _encode_single_page_job(
+    width: TapeWidth,
+    raster_lines: list[bytes],
+    *,
+    auto_cut: bool,
+    margin_dots: int,
+    half_cut: bool,
+    no_chain: bool,
+    compression: int,
 ) -> bytes:
     """Assemble a minimal single-page print job byte stream."""
     parts: list[bytes] = [
@@ -163,3 +232,25 @@ def encode_job(
         parts.append(raster_line(line))
     parts.append(eject())
     return b"".join(parts)
+
+
+def encode_job(
+    width: TapeWidth,
+    raster_lines: list[bytes],
+    *,
+    auto_cut: bool = True,
+    margin_dots: int = 14,
+    half_cut: bool = False,
+    no_chain: bool = True,
+    compression: int = 0,
+) -> bytes:
+    """Assemble a minimal single-page print job byte stream."""
+    return encode_strip_job(
+        width,
+        [raster_lines],
+        auto_cut=auto_cut,
+        margin_dots=margin_dots,
+        half_cut=half_cut,
+        no_chain=no_chain,
+        compression=compression,
+    )

@@ -1,10 +1,12 @@
 """Brother PT-E920BT label printer library and CLI."""
 
 from brother_printer.printing import (
+    HalfCutNotSupportedError,
     PrintError,
     PrinterNotReadyError,
     TapeMismatchError,
     print_image,
+    print_strip,
     query_status,
     select_printer,
 )
@@ -26,6 +28,7 @@ discover_printers = discover
 __all__ = [
     "DeviceBusyError",
     "DeviceNotFoundError",
+    "HalfCutNotSupportedError",
     "PermissionDeniedError",
     "PrintError",
     "PrinterInfo",
@@ -38,6 +41,7 @@ __all__ = [
     "__version__",
     "discover_printers",
     "print_image",
+    "print_strip",
     "query_status",
     "select_printer",
 ]

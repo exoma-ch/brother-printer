@@ -4,6 +4,7 @@ from brother_printer.protocol.constants import (
     HEAD_PINS,
     CMD_ADVANCED_MODE,
     CMD_COMPRESSION,
+    CMD_CUT_EACH,
     CMD_EJECT,
     CMD_INITIALIZE,
     CMD_INVALIDATE_COUNT,
@@ -40,6 +41,7 @@ def test_command_opcodes():
     assert CMD_PRINT_INFO == b"\x1b\x69\x7a"
     assert CMD_MODE == b"\x1b\x69\x4d"
     assert CMD_ADVANCED_MODE == b"\x1b\x69\x4b"
+    assert CMD_CUT_EACH == b"\x1b\x69\x41"
     assert CMD_MARGIN == b"\x1b\x69\x64"
     assert CMD_COMPRESSION == b"\x4d"
     assert CMD_RASTER == b"\x47"
