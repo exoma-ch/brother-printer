@@ -159,7 +159,12 @@ def encode_strip_job(
     cut_each_n: int | None = None,
     compression: int = 0,
 ) -> bytes:
-    """Assemble a multi-page print job byte stream."""
+    """Assemble a multi-page print job byte stream.
+
+    Half-cut strips disable auto-cut and emit a full control block per page.
+    Callers must ensure laminated tape when ``half_cut`` is True; see
+    ``print_strip()`` validation in ``brother_printer.printing``.
+    """
     if not pages:
         msg = "pages must contain at least one raster page"
         raise ValueError(msg)
@@ -176,25 +181,26 @@ def encode_strip_job(
         )
 
     page_count = len(pages)
-    resolved_cut_each = page_count if cut_each_n is None else cut_each_n
-    parts: list[bytes] = [
-        initialize(),
-        switch_raster_mode(),
-        set_mode(auto_cut=auto_cut),
-    ]
-    if auto_cut:
-        parts.append(cut_each(resolved_cut_each))
-    parts.extend(
-        [
-            advanced_mode(half_cut=half_cut, no_chain=no_chain),
-            set_margin(margin_dots),
-            select_compression(compression),
-        ]
-    )
+    effective_auto_cut = auto_cut and not half_cut
+    parts: list[bytes] = []
 
     for index, raster_lines in enumerate(pages):
         is_last = index == page_count - 1
+        if index == 0:
+            parts.append(initialize())
+        parts.append(switch_raster_mode())
         parts.append(print_information(width, len(raster_lines), last_page=is_last))
+        parts.append(set_mode(auto_cut=effective_auto_cut))
+        if effective_auto_cut:
+            resolved_cut_each = page_count if cut_each_n is None else cut_each_n
+            parts.append(cut_each(resolved_cut_each))
+        parts.extend(
+            [
+                advanced_mode(half_cut=half_cut, no_chain=no_chain),
+                set_margin(margin_dots),
+                select_compression(compression),
+            ]
+        )
         for line in raster_lines:
             parts.append(raster_line(line))
         parts.append(eject() if is_last else print_page())

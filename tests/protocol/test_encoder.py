@@ -130,9 +130,12 @@ def test_encode_strip_job_two_pages():
         half_cut=True,
         no_chain=True,
     )
+    adv = advanced_mode(half_cut=True, no_chain=True)
     assert job.endswith(CMD_EJECT)
-    assert CMD_CUT_EACH + bytes([0x02]) in job
-    assert advanced_mode(half_cut=True, no_chain=True) in job
+    assert CMD_CUT_EACH not in job
+    assert job.count(set_mode(auto_cut=False)) == 2
+    assert job.count(adv) == 2
+    assert job.index(CMD_PRINT_INFO) < job.index(adv)
     assert job.count(CMD_PRINT_INFO) == 2
     assert print_information(TapeWidth.MM_24, 1, last_page=False) in job
     assert print_information(TapeWidth.MM_24, 1, last_page=True) in job
@@ -148,6 +151,34 @@ def test_encode_strip_job_matches_golden():
     )
     golden = _load_golden("minimal_job_24mm.bin")
     assert job == golden
+
+
+def test_encode_strip_job_half_cut_disables_auto_cut():
+    """Half-cut strips disable auto-cut and omit cut-each; full-cut strips unchanged."""
+    line = _blank_raster_line()
+    half_cut_job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line], [line]],
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+    )
+    adv = advanced_mode(half_cut=True, no_chain=True)
+    assert CMD_CUT_EACH not in half_cut_job
+    assert half_cut_job.count(set_mode(auto_cut=False)) == 3
+    assert half_cut_job.count(adv) == 3
+    assert half_cut_job.index(CMD_PRINT_INFO) < half_cut_job.index(adv)
+
+    full_cut_job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line], [line]],
+        auto_cut=True,
+        half_cut=False,
+        no_chain=True,
+    )
+    cut_each_3 = CMD_CUT_EACH + bytes([0x03])
+    assert full_cut_job.count(cut_each_3) == 3
+    assert full_cut_job.count(set_mode(auto_cut=True)) == 3
 
 
 def test_encode_strip_job_three_page_golden():
