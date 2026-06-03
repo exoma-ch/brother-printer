@@ -8,6 +8,7 @@ from brother_printer.imaging.errors import ImagingError
 from brother_printer.protocol.enums import TapeWidth
 
 _DEFAULT_FILL_RATIO = 0.8
+_MIN_DEFAULT_FONT_SIZE = 50
 _METRICS_SAMPLE = "Ay"
 _VALID_ROTATIONS = frozenset({0, 90, 180, 270})
 _VALID_ALIGNS = frozenset({"left", "center", "right"})
@@ -100,23 +101,6 @@ def _x_for_align(
     return margin + (content_width - text_width) // 2 - bbox[0]
 
 
-def _feed_length_for_rotation(
-    line_list: list[str],
-    font: ImageFont.ImageFont,
-    *,
-    line_spacing: float,
-    margin: int,
-    align: str,
-) -> int:
-    draw = ImageDraw.Draw(Image.new("L", (1, 1)))
-    if len(line_list) == 1:
-        max_line_w = _line_width(draw, line_list[0], font)
-        return _label_width(max_line_w, margin=margin, align=align)
-    block_h = _block_height(font, len(line_list), line_spacing=line_spacing)
-    align_slack = 0 if align == "center" else block_h
-    return block_h + 2 * margin + align_slack
-
-
 def _draw_stacked_lines(
     image: Image.Image,
     line_list: list[str],
@@ -178,35 +162,6 @@ def _render_horizontal(
     return image
 
 
-def _render_rotated_base(
-    line_list: list[str],
-    tape_width: TapeWidth,
-    font: ImageFont.ImageFont,
-    *,
-    align: str,
-    line_spacing: float,
-    margin: int,
-) -> Image.Image:
-    cross = tape_width.print_area_pins
-    feed = _feed_length_for_rotation(
-        line_list,
-        font,
-        line_spacing=line_spacing,
-        margin=margin,
-        align=align,
-    )
-    image = Image.new("L", (cross, feed), 255)
-    _draw_stacked_lines(
-        image,
-        line_list,
-        font,
-        align=align,
-        line_spacing=line_spacing,
-        margin=margin,
-    )
-    return image
-
-
 def render_text(
     text: str,
     tape_width: TapeWidth,
@@ -235,12 +190,15 @@ def render_text(
 
     line_list = text.split("\n")
     if font_size is None:
-        size = max_font_size(
-            tape_width,
-            len(line_list),
-            line_spacing=line_spacing,
-            font_path=font_path,
-            fill_ratio=fill_ratio,
+        size = max(
+            max_font_size(
+                tape_width,
+                len(line_list),
+                line_spacing=line_spacing,
+                font_path=font_path,
+                fill_ratio=fill_ratio,
+            ),
+            _MIN_DEFAULT_FONT_SIZE,
         )
     else:
         if font_size < 1:
@@ -255,13 +213,7 @@ def render_text(
         "margin": margin,
     }
 
-    if rotate in {0, 180}:
-        image = _render_horizontal(line_list, tape_width, font, **render_kwargs)
-        if rotate == 180:
-            return image.rotate(180, expand=False, resample=Image.Resampling.NEAREST)
-        return image
-
-    base = _render_rotated_base(line_list, tape_width, font, **render_kwargs)
-    if rotate == 90:
-        return base.rotate(90, expand=True, resample=Image.Resampling.NEAREST)
-    return base.rotate(270, expand=True, resample=Image.Resampling.NEAREST)
+    image = _render_horizontal(line_list, tape_width, font, **render_kwargs)
+    if rotate in {180, 270}:
+        return image.rotate(180, expand=False, resample=Image.Resampling.NEAREST)
+    return image
