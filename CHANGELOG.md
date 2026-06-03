@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
+  - `render_text`, `max_font_size`, and `print_text` for multi-line labels with auto-fit font size, alignment, spacing, and baked-in rotation
+  - CLI `brother-printer print --text` with `--font`, `--font-size`, `--align`, and `--line-spacing`
+  - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
+
 - **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
   - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
   - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`

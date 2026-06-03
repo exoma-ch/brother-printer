@@ -5,7 +5,7 @@ description = "Open-source CLI and library for Brother PT-E920BT label printing"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.1",
-    "pillow>=10",
+    "pillow>=10.1",
     "pyusb>=1.2",
 ]
 

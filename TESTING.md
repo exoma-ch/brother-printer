@@ -30,8 +30,8 @@ the printer is busy. Idle wait allows up to **3 minutes** after long strips (P1)
 | --- | --- |
 | `tests/protocol/` | Encoder/decoder golden files, constants, enums |
 | `tests/transport/` | USB transport (pyusb mocked), discover, errors |
-| `tests/imaging/` | `image_to_raster` pipeline (monochrome, rotation, margin, scaling) |
-| `tests/` | Library orchestration (`print_image`, `print_strip`, `query_status`) |
+| `tests/imaging/` | `image_to_raster` pipeline and text rendering (`render_text`, `max_font_size`) |
+| `tests/` | Library orchestration (`print_image`, `print_strip`, `print_text`, `query_status`) |
 | `tests/cli/` | CLI commands, CSV jobs, import boundaries (ADR-0002) |
 
 ## Hardware suite layout
@@ -43,7 +43,7 @@ All opt-in hardware tests live under `tests/hardware/`:
 | `conftest.py` | Shared markers, fixtures (`printer`, `loaded_tape`, `fixture_path`, …), status helpers |
 | `test_connectivity.py` | `discover()` and USB open/close |
 | `test_status.py` | Status round-trip, `query_status`, CLI `status` and `discover --status` |
-| `test_print.py` | Minimal-tape print matrix (P0–P3) |
+| `test_print.py` | Minimal-tape print matrix (P0–P4) |
 
 Fixtures: `tests/hardware/assets/` — QR, grayscale gradient, and `distort_100.png`;
 regenerate with `just gen-test-images`.
@@ -73,6 +73,7 @@ strip with a single cut at the end (`cut_each` after the last page; no cuts betw
 | **P1** | `test_print_visual_variations_strip` | 1 continuous strip, **one cut** at end | `image_to_raster` per variation + single `encode_strip_job(..., auto_cut=True)` (FF between pages, `cut_each` on last page); `rotate` 0/90/180/270, `threshold` (grayscale fixture), `allow_distortion` (distort fixture); no per-page eject feed |
 | **P2** | `test_print_half_cut_strip` | 1 half-cut strip (2 pages) | `print_strip`, `half_cut=True`, chained multi-page, auto-cut forced off; **laminated tape only** |
 | **P3** | `test_print_full_cut_strip_copies` | 2 full-cut labels | `print_strip(copies=2)`, `cut_each`, FF page chaining, full multi-page auto-cut |
+| **P4** | `test_print_text_feature_matrix` | 1 continuous strip, **one cut** at end | `render_text` + `print_strip`: auto-fit default font, multi-line + `align`, fixed `font_size`, `rotate=90` |
 
 **Rough total per run:** ~4–5 cut labels plus one half-cut strip (P2), while covering
 rotations, threshold, `allow_distortion`, and chained multi-page encoding without blank
@@ -110,6 +111,7 @@ Not exercised on a physical printer today:
 | Gap | Notes |
 | --- | --- |
 | `print_image` / `print_image(copies>1)` | P1 uses `image_to_raster` + `encode_strip_job` directly; separate full jobs per copy not exercised on hardware |
+| `print_text` | P4 uses `render_text` + `print_strip`; single-job `print_text` path covered by software tests only |
 | `margin` | `apply_margin` covered by imaging unit tests only (padding breaks integer scale on tape-sized fixtures) |
 | `mirror` | Encoder supports it; not exposed on `print_image` / `print_strip` |
 | `no_chain=False` | Chained mode only via raw `encode_strip_job` |
