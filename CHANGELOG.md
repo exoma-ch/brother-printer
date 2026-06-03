@@ -69,6 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Half-cut label strips and centered QR on tape** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
+  - Raster packing uses the right-margin head offset per Brother §2.3.5 so images are centered on the tape
+
 - **Single-page encode_job() feed and auto-cut on hardware** ([#5](https://github.com/exoma-ch/brother-printer/issues/5))
   - Default to no-chain mode so labels feed out and auto-cut after the last page
   - Hardware print smoke test uses 60 raster lines (above the 57-dot TZe minimum)
