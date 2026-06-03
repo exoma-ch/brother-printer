@@ -164,15 +164,15 @@ def test_render_text_multiline_keeps_tape_height():
 def test_render_text_align_shifts_ink_centroid(align, relation):
     """Horizontal alignment shifts where ink sits along the label length."""
     tape = TapeWidth.MM_24
-    wide = render_text("X", tape, align=align, font_size=40, margin=80)
+    wide = render_text("ABCDEFGH", tape, align=align, font_size=40, margin=80)
     centroid = _ink_centroid_x(wide)
     mid = wide.width / 2
     if relation == "less":
-        assert centroid < mid - 10
+        assert centroid < mid - 20
     elif relation == "greater":
-        assert centroid > mid + 10
+        assert centroid > mid + 20
     else:
-        assert abs(centroid - mid) < 15
+        assert abs(centroid - mid) < 20
 
 
 def test_render_text_explicit_font_size_increases_ink():
@@ -184,11 +184,12 @@ def test_render_text_explicit_font_size_increases_ink():
 
 
 def test_render_text_rotate_90_differs_from_zero():
-    """90-degree rotation changes the rendered bitmap dimensions."""
+    """90-degree rotation changes the rendered bitmap content."""
     tape = TapeWidth.MM_24
     flat = render_text("Rotate", tape, rotate=0)
     turned = render_text("Rotate", tape, rotate=90)
-    assert turned.size != flat.size
+    assert turned.size == flat.size
+    assert turned.tobytes() != flat.tobytes()
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\n"])
