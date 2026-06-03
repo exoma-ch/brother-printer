@@ -183,13 +183,51 @@ def test_render_text_explicit_font_size_increases_ink():
     assert _ink_pixel_count(large) >= _ink_pixel_count(auto)
 
 
-def test_render_text_rotate_90_differs_from_zero():
-    """90-degree rotation changes the rendered bitmap content."""
+def test_render_text_rotate_90_matches_zero():
+    """90-degree rotation renders the same full-length label as 0 degrees."""
     tape = TapeWidth.MM_24
     flat = render_text("Rotate", tape, rotate=0)
     turned = render_text("Rotate", tape, rotate=90)
     assert turned.size == flat.size
-    assert turned.tobytes() != flat.tobytes()
+    assert turned.tobytes() == flat.tobytes()
+    assert _ink_pixel_count(turned) == _ink_pixel_count(flat)
+
+
+def test_render_text_rotate_270_matches_180():
+    """270-degree rotation renders the same full-length label as 180 degrees."""
+    tape = TapeWidth.MM_24
+    upside_down = render_text("Rotate", tape, rotate=180)
+    turned = render_text("Rotate", tape, rotate=270)
+    assert turned.size == upside_down.size
+    assert turned.tobytes() == upside_down.tobytes()
+
+
+def test_render_text_rotate_90_preserves_full_text_on_wide_tape():
+    """Regression: rotated text must not be cropped on wide tape."""
+    tape = TapeWidth.MM_36
+    flat = render_text("Hello Lars", tape, rotate=0)
+    turned = render_text("Hello Lars", tape, rotate=90)
+    assert turned.width == flat.width
+    assert _ink_pixel_count(turned) == _ink_pixel_count(flat)
+
+
+def test_render_text_default_font_size_floors_small_tape():
+    """Default font size is at least 50px even when max_font_size is smaller."""
+    tape = TapeWidth.MM_3_5
+    assert max_font_size(tape, 1) < 50
+    default = render_text("Hi", tape)
+    floored = render_text("Hi", tape, font_size=50)
+    assert default.tobytes() == floored.tobytes()
+
+
+def test_render_text_default_font_size_uses_max_on_large_tape():
+    """Default font size uses max_font_size when it exceeds the 50px floor."""
+    tape = TapeWidth.MM_36
+    fitted = max_font_size(tape, 1)
+    assert fitted > 50
+    default = render_text("Hi", tape)
+    explicit = render_text("Hi", tape, font_size=fitted)
+    assert default.tobytes() == explicit.tobytes()
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\n"])
