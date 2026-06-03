@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
+  - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
+  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`
+  - Minimal-tape matrix: P1 sends one `encode_strip_job` chained strip (FF between pages, single end cut) for rotations/threshold/distortion; plus raw encode, half-cut strip, and full-cut copies
+
 - **PT-E920BT vendor documentation** ([#1](https://github.com/exoma-ch/brother-printer/issues/1))
   - Provenance index, fetch/convert scripts, User's Guide and raster text dumps, USB ID and TZe tape width tables under `docs/vendor/`
 
