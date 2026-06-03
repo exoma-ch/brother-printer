@@ -6,8 +6,12 @@ import pytest
 from usb.core import USBError
 
 from brother_printer.transport.base import PrinterInfo
-from brother_printer.transport.errors import DeviceNotFoundError, PermissionDeniedError
-from brother_printer.transport.usb import UsbTransport
+from brother_printer.transport.errors import (
+    DeviceNotFoundError,
+    PermissionDeniedError,
+    TransportTimeoutError,
+)
+from brother_printer.transport.usb import UsbTransport, _BULK_OUT_CHUNK
 
 
 def _printer_info() -> PrinterInfo:
@@ -162,6 +166,53 @@ def test_usb_transport_close_is_idempotent(mock_find, mock_claim, mock_release):
     transport.close()
 
     mock_release.assert_called_once()
+
+
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
+@patch("brother_printer.transport.usb.usb.core.find")
+def test_usb_transport_write_sends_all_bytes_across_chunks(
+    mock_find, mock_claim, mock_release
+):
+    """write() loops until the full payload is sent when the endpoint returns partial counts."""
+    device, ep_out, _ = _make_usb_device()
+    mock_find.return_value = [device]
+    payload = b"\xab" * (_BULK_OUT_CHUNK + 1024)
+    first_chunk = payload[:_BULK_OUT_CHUNK]
+    remainder = payload[_BULK_OUT_CHUNK:]
+
+    def _partial_write(data, _timeout):
+        if data == first_chunk:
+            return len(first_chunk)
+        if data == remainder:
+            return len(remainder)
+        return 0
+
+    ep_out.write.side_effect = _partial_write
+
+    transport = UsbTransport(_printer_info())
+    transport.open()
+    assert transport.write(payload) == len(payload)
+    assert ep_out.write.call_count == 2
+    transport.close()
+
+
+@patch("brother_printer.transport.usb.usb.util.release_interface")
+@patch("brother_printer.transport.usb.usb.util.claim_interface")
+@patch("brother_printer.transport.usb.usb.core.find")
+def test_usb_transport_write_raises_when_stalled(mock_find, mock_claim, mock_release):
+    """write() raises TransportTimeoutError when the endpoint returns zero bytes."""
+    device, ep_out, _ = _make_usb_device()
+    mock_find.return_value = [device]
+    ep_out.write.return_value = 0
+
+    transport = UsbTransport(_printer_info())
+    transport.open()
+
+    with pytest.raises(TransportTimeoutError, match="stalled"):
+        transport.write(b"\x00\x01")
+
+    transport.close()
 
 
 @patch("brother_printer.transport.usb.usb.util.release_interface")
