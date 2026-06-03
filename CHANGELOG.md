@@ -65,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Hardware test layout homogenized** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
+  - Connectivity, status, and print tests consolidated under `tests/hardware/`; removed scattered `*_hardware*` modules in `tests/protocol/` and `tests/transport/`
+  - P1 visual-variations strip uses one chained job instead of repeated `print_image` ejects (eliminates blank tape between segments); hardware margin case dropped
+
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
   - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
   - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image

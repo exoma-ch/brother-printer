@@ -1,29 +1,16 @@
-"""Opt-in hardware connectivity test for a real PT-E920BT.
+"""Opt-in hardware connectivity tests for a real PT-E920BT.
 
-These tests talk to a physically connected printer and are skipped unless
-``BROTHER_PRINTER_HARDWARE=1`` is set. Run them with::
+Run with::
 
-    just test-hardware
+    just test-hardware tests/hardware/test_connectivity.py
 
-They require USB passthrough into the devcontainer (see
-docs/install/linux-usb.md) and the libusb backend.
+Requires USB passthrough and udev permissions (see docs/install/linux-usb.md).
+Non-destructive: no tape is consumed.
 """
-
-import os
-
-import pytest
 
 from brother_printer.transport import UsbTransport, discover
 
-_HARDWARE_ENABLED = os.environ.get("BROTHER_PRINTER_HARDWARE") == "1"
-
-pytestmark = [
-    pytest.mark.hardware,
-    pytest.mark.skipif(
-        not _HARDWARE_ENABLED,
-        reason="set BROTHER_PRINTER_HARDWARE=1 to run hardware connectivity tests",
-    ),
-]
+from tests.hardware.conftest import HARDWARE_PYTESTMARK as pytestmark  # noqa: F401
 
 
 def test_discover_finds_connected_printer():

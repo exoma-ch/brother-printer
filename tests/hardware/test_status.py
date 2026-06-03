@@ -1,49 +1,57 @@
-"""Opt-in hardware test for status query and CLI status commands.
+"""Opt-in hardware status tests for a real PT-E920BT.
 
-These tests query live printer status over USB and are skipped unless
-``BROTHER_PRINTER_HARDWARE=1`` is set. Run them with::
+Run with::
 
-    just test-hardware tests/hardware/test_status_hardware.py
+    just test-hardware tests/hardware/test_status.py
 
-They require USB passthrough into the devcontainer (see
-docs/install/linux-usb.md) and the libusb backend. Non-destructive:
-no tape is consumed.
+Requires USB passthrough and udev permissions (see docs/install/linux-usb.md).
+Non-destructive: no tape is consumed.
 """
 
 from __future__ import annotations
 
-import os
-
-import pytest
 from click.testing import CliRunner
 
 from brother_printer import discover_printers, query_status, select_printer
 from brother_printer.cli.main import main
-from brother_printer.protocol.enums import StatusType, TapeWidth
+from brother_printer.protocol import (
+    STATUS_REPLY_SIZE,
+    StatusType,
+    TapeWidth,
+    decode_status,
+    status_request,
+)
+from brother_printer.transport import UsbTransport, discover
 
-_HARDWARE_ENABLED = os.environ.get("BROTHER_PRINTER_HARDWARE") == "1"
-
-_PRINTER_REQUIRED_MSG = (
-    "No PT-E920BT found. Confirm the printer is connected and powered, "
-    "USB passthrough is configured, and udev permissions are set "
-    "(see docs/install/linux-usb.md)."
+from tests.hardware.conftest import (  # noqa: F401
+    HARDWARE_PYTESTMARK as pytestmark,
+    PRINTER_REQUIRED_MSG,
+    STATUS_READ_TIMEOUT_MS,
 )
 
 _STATUS_LABELS = ("Tape:", "Color:", "Media:", "Phase:", "Status:")
 
-pytestmark = [
-    pytest.mark.hardware,
-    pytest.mark.skipif(
-        not _HARDWARE_ENABLED,
-        reason="set BROTHER_PRINTER_HARDWARE=1 to run hardware status tests",
-    ),
-]
-
 
 def _require_printers():
     printers = discover_printers()
-    assert printers, _PRINTER_REQUIRED_MSG
+    assert printers, PRINTER_REQUIRED_MSG
     return printers
+
+
+def test_status_request_round_trip():
+    """status_request() over USB returns a decodable 32-byte status reply."""
+    printers = discover()
+    assert printers, PRINTER_REQUIRED_MSG
+
+    with UsbTransport(printers[0]) as transport:
+        transport.write(status_request())
+        reply = transport.read_exact(
+            STATUS_REPLY_SIZE, timeout_ms=STATUS_READ_TIMEOUT_MS
+        )
+
+    status = decode_status(reply)
+    assert status.status_type == StatusType.REPLY
+    assert status.media_width is None or isinstance(status.media_width, TapeWidth)
 
 
 def test_query_status_library_api():
