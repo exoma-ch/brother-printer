@@ -362,6 +362,57 @@ def test_print_image_raises_when_printer_reports_errors(
         print_image(Image.new("L", (1, 1), 255), TapeWidth.MM_24)
 
 
+def test_select_printer_returns_first_when_identifier_none():
+    """select_printer() picks the first printer when no identifier is given."""
+    from brother_printer import select_printer
+
+    first = _sample_printer(serial="000111111111")
+    second = _sample_printer(serial="000222222222")
+    assert select_printer([first, second], None) is first
+
+
+def test_select_printer_returns_matching_identifier():
+    """select_printer() returns the printer with the given identifier."""
+    from brother_printer import select_printer
+
+    first = _sample_printer(serial="000111111111")
+    second = _sample_printer(serial="000222222222")
+    assert select_printer([first, second], second.identifier) is second
+
+
+def test_select_printer_raises_when_list_empty():
+    """select_printer() raises DeviceNotFoundError for an empty printer list."""
+    from brother_printer import select_printer
+
+    with pytest.raises(
+        DeviceNotFoundError, match="No Brother PT-E920BT printers found"
+    ):
+        select_printer([], None)
+
+
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.UsbTransport")
+def test_query_status_reads_status_reply(mock_transport_cls, mock_decode_status):
+    """query_status() sends status_request and decodes the 32-byte reply."""
+    from brother_printer import query_status
+
+    printer = _sample_printer()
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    status_bytes = b"\x80\x20" + b"\x00" * 30
+    transport.read_exact.return_value = status_bytes
+    expected = _ready_status(tape=TapeWidth.MM_24)
+    mock_decode_status.return_value = expected
+
+    status = query_status(printer)
+
+    mock_transport_cls.assert_called_once_with(printer)
+    transport.write.assert_called_once()
+    transport.read_exact.assert_called_once_with(32, timeout_ms=5000)
+    mock_decode_status.assert_called_once_with(status_bytes)
+    assert status is expected
+
+
 @patch("brother_printer.printing.decode_status")
 @patch("brother_printer.printing.UsbTransport")
 @patch("brother_printer.printing.discover")

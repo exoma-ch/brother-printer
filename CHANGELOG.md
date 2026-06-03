@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `print_image()` library orchestrator with tape-width safety check against printer status
   - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-test-images`
 
+- **CLI status, discover --status, and info tapes** ([#8](https://github.com/exoma-ch/brother-printer/issues/8), [#19](https://github.com/exoma-ch/brother-printer/issues/19))
+  - `brother-printer status [-p ID]` shows loaded tape, color, media type, phase, and error state
+  - `brother-printer discover -s/--status` queries each printer with graceful per-device failure handling
+  - `brother-printer info tapes` lists supported TZe widths and printable pixel widths at 360 dpi
+  - Library API: `query_status()`, `select_printer()`, and `PrinterStatus` re-export; CLI routes through `brother_printer` only ([#18](https://github.com/exoma-ch/brother-printer/issues/18))
+
 - **Half-cut label strips and daisy-chained multi-label printing** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
   - `encode_strip_job()` multi-page encoder with `ESC i A` cut-each-N support; `print_strip()` library API
   - `brother-printer print` accepts multiple paths or `--csv FILE` for chained strips; `--half-cut`/`--no-half-cut` and `--strip`/`--no-strip`

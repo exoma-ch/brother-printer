@@ -14,7 +14,7 @@ from brother_printer.protocol.encoder import (
 )
 from brother_printer.protocol.enums import MediaType, TapeWidth
 from brother_printer.transport import UsbTransport, discover
-from brother_printer.transport.base import PrinterInfo
+from brother_printer.transport.base import PrinterInfo, Transport
 from brother_printer.transport.errors import DeviceNotFoundError
 
 
@@ -34,7 +34,7 @@ class HalfCutNotSupportedError(PrintError):
     """Half-cut requested on tape that does not support it (non-laminated)."""
 
 
-def _select_printer(printers: list[PrinterInfo], identifier: str | None) -> PrinterInfo:
+def select_printer(printers: list[PrinterInfo], identifier: str | None) -> PrinterInfo:
     if not printers:
         raise DeviceNotFoundError("No Brother PT-E920BT printers found")
 
@@ -47,6 +47,22 @@ def _select_printer(printers: list[PrinterInfo], identifier: str | None) -> Prin
 
     msg = f"No printer found for identifier {identifier!r}"
     raise DeviceNotFoundError(msg)
+
+
+def _read_status(transport: Transport, *, timeout_ms: int = 5000) -> PrinterStatus:
+    transport.write(status_request())
+    reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=timeout_ms)
+    return decode_status(reply)
+
+
+def query_status(
+    printer: PrinterInfo,
+    *,
+    timeout_ms: int = 5000,
+) -> PrinterStatus:
+    """Query live printer status over USB (ESC i S status reply)."""
+    with UsbTransport(printer) as transport:
+        return _read_status(transport, timeout_ms=timeout_ms)
 
 
 def _validate_status(
@@ -95,12 +111,10 @@ def print_image(
 
     Half-cut requires laminated tape; see docs/vendor/tze-tape-widths.md.
     """
-    selected = _select_printer(discover(), printer)
+    selected = select_printer(discover(), printer)
 
     with UsbTransport(selected) as transport:
-        transport.write(status_request())
-        reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=5000)
-        status = decode_status(reply)
+        status = _read_status(transport)
         _validate_status(status, tape_width, half_cut=half_cut)
 
         raster_lines = image_to_raster(
@@ -145,12 +159,10 @@ def print_strip(
         msg = "images must contain at least one label"
         raise ValueError(msg)
 
-    selected = _select_printer(discover(), printer)
+    selected = select_printer(discover(), printer)
 
     with UsbTransport(selected) as transport:
-        transport.write(status_request())
-        reply = transport.read_exact(STATUS_REPLY_SIZE, timeout_ms=5000)
-        status = decode_status(reply)
+        status = _read_status(transport)
         _validate_status(status, tape_width, half_cut=half_cut)
 
         raster_kwargs = {

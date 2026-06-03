@@ -21,7 +21,7 @@ def _sample_printer(
     )
 
 
-@patch("brother_printer.cli.main.discover")
+@patch("brother_printer.cli.main.discover_printers")
 def test_discover_command_lists_printers(mock_discover):
     """discover prints one line per printer with identifier, product, and location."""
     mock_discover.return_value = [_sample_printer()]
@@ -33,7 +33,7 @@ def test_discover_command_lists_printers(mock_discover):
     assert result.output.strip() == "04f9:20c7#000123456789\tPT-E920BT\t1:5"
 
 
-@patch("brother_printer.cli.main.discover")
+@patch("brother_printer.cli.main.discover_printers")
 def test_discover_command_lists_multiple_printers(mock_discover):
     """discover prints each connected printer on its own line."""
     mock_discover.return_value = [
@@ -51,7 +51,7 @@ def test_discover_command_lists_multiple_printers(mock_discover):
     assert lines[1].startswith("04f9:20c7#000222222222")
 
 
-@patch("brother_printer.cli.main.discover")
+@patch("brother_printer.cli.main.discover_printers")
 def test_discover_command_exits_nonzero_when_no_printers(mock_discover):
     """discover exits with code 1 when no printers are found."""
     mock_discover.return_value = []
@@ -63,10 +63,10 @@ def test_discover_command_exits_nonzero_when_no_printers(mock_discover):
     assert "No Brother PT-E920BT printers found" in result.output
 
 
-@patch("brother_printer.cli.main.discover")
+@patch("brother_printer.cli.main.discover_printers")
 def test_discover_command_reports_permission_denied(mock_discover):
     """discover surfaces permission errors with udev guidance."""
-    from brother_printer.transport.errors import PermissionDeniedError
+    from brother_printer import PermissionDeniedError
 
     mock_discover.side_effect = PermissionDeniedError("Access denied")
     runner = CliRunner()
