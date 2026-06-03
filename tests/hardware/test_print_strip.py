@@ -1,12 +1,12 @@
 """Opt-in hardware test for half-cut label strips.
 
-Prints a three-label strip with half-cut enabled. Skipped unless
+Prints a two-label strip with half-cut enabled. Skipped unless
 ``BROTHER_PRINTER_HARDWARE=1`` is set. Run with::
 
     just test-hardware tests/hardware/test_print_strip.py
 
-Consumes tape. Requires USB passthrough, udev permissions, and a loaded
-TZe tape matching a committed fixture.
+Consumes tape. Requires USB passthrough, udev permissions, laminated TZe tape
+matching a committed fixture, and ``BROTHER_PRINTER_HARDWARE=1``.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from PIL import Image
 
 from brother_printer import print_strip
 from brother_printer.protocol import STATUS_REPLY_SIZE, decode_status, status_request
-from brother_printer.protocol.enums import PhaseType, TapeWidth
+from brother_printer.protocol.enums import MediaType, PhaseType, TapeWidth
 from brother_printer.transport import UsbTransport, discover
 from brother_printer.transport.base import PrinterInfo
 from brother_printer.transport.errors import TransportTimeoutError
@@ -91,6 +91,12 @@ def _query_loaded_tape(printer: PrinterInfo) -> TapeWidth:
     if status.errors:
         pytest.skip("Printer reported errors: " + ", ".join(status.errors))
 
+    if status.media_type != MediaType.LAMINATED:
+        pytest.skip(
+            "Half-cut hardware test requires laminated tape; loaded media is "
+            f"{status.media_type.name.replace('_', ' ').lower()}"
+        )
+
     return status.media_width
 
 
@@ -123,11 +129,11 @@ def test_print_half_cut_strip(
     loaded_tape: TapeWidth,
     printer: PrinterInfo,
 ) -> None:
-    """print_strip() prints a three-label half-cut strip on hardware."""
+    """print_strip() prints a two-label half-cut strip on hardware."""
     _wait_for_printer_idle(printer)
 
     with Image.open(fixture_path) as image:
-        images = [image.copy() for _ in range(3)]
+        images = [image.copy() for _ in range(2)]
 
     written = print_strip(images, loaded_tape, half_cut=True)
 

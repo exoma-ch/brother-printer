@@ -33,10 +33,14 @@ def _sample_printer(
     )
 
 
-def _ready_status(*, tape: TapeWidth = TapeWidth.MM_24) -> PrinterStatus:
+def _ready_status(
+    *,
+    tape: TapeWidth = TapeWidth.MM_24,
+    media_type: MediaType = MediaType.LAMINATED,
+) -> PrinterStatus:
     return PrinterStatus(
         media_width=tape,
-        media_type=MediaType.LAMINATED,
+        media_type=media_type,
         errors=(),
         status_type=StatusType.REPLY,
         phase_type=PhaseType.EDITING,
@@ -356,3 +360,51 @@ def test_print_image_raises_when_printer_reports_errors(
 
     with pytest.raises(PrinterNotReadyError, match="Cover open"):
         print_image(Image.new("L", (1, 1), 255), TapeWidth.MM_24)
+
+
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
+def test_print_image_raises_half_cut_on_non_laminated(
+    mock_discover,
+    mock_transport_cls,
+    mock_decode_status,
+):
+    """print_image() rejects half-cut when loaded tape is not laminated."""
+    from brother_printer import HalfCutNotSupportedError, print_image
+
+    mock_discover.return_value = [_sample_printer()]
+    mock_transport_cls.return_value = _mock_transport()
+    mock_decode_status.return_value = _ready_status(
+        tape=TapeWidth.MM_24,
+        media_type=MediaType.NON_LAMINATED,
+    )
+
+    with pytest.raises(HalfCutNotSupportedError, match="laminated"):
+        print_image(Image.new("L", (1, 1), 255), TapeWidth.MM_24, half_cut=True)
+
+
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
+def test_print_strip_raises_half_cut_on_non_laminated(
+    mock_discover,
+    mock_transport_cls,
+    mock_decode_status,
+):
+    """print_strip() rejects half-cut when loaded tape is not laminated."""
+    from brother_printer import HalfCutNotSupportedError, print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    mock_transport_cls.return_value = _mock_transport()
+    mock_decode_status.return_value = _ready_status(
+        tape=TapeWidth.MM_36,
+        media_type=MediaType.NON_LAMINATED,
+    )
+
+    with pytest.raises(HalfCutNotSupportedError, match="laminated"):
+        print_strip(
+            [Image.new("L", (1, 1), 255), Image.new("L", (1, 1), 255)],
+            TapeWidth.MM_36,
+            half_cut=True,
+        )

@@ -54,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `encode_strip_job()` multi-page encoder with `ESC i A` cut-each-N support; `print_strip()` library API
   - `brother-printer print` accepts multiple paths or `--csv FILE` for chained strips; `--half-cut`/`--no-half-cut` and `--strip`/`--no-strip`
   - CSV schema: required `image` column and optional `copies` column (paths relative to the CSV file)
-  - Opt-in hardware test prints a three-label half-cut strip
+  - Opt-in hardware test prints a two-label half-cut strip (laminated tape only)
+  - `HalfCutNotSupportedError` when `half_cut=True` on non-laminated loaded tape; see `docs/vendor/tze-tape-widths.md`
 
 ### Changed
 

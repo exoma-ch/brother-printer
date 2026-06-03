@@ -65,6 +65,26 @@ Raster Command Reference §4, table (3) — TZe *Media Width* byte values (hex):
 
 Media length byte for TZe tape is fixed at `0x00` (continuous roll).
 
+## Half-cut tape support
+
+The PT-E920BT has a dual auto-cutter (full and half-cut). Half-cut perforates the
+label layer while leaving the backing attached, which is used for multi-label strips.
+
+| Requirement | Detail |
+| --- | --- |
+| Supported widths | All PT-E920BT widths (3.5–36 mm) when other conditions are met |
+| Required media | **Laminated** TZe or HGe tape (`MediaType.LAMINATED`, status byte `0x01`) |
+| Not supported | Non-laminated TZe (e.g. TZe-N series), fabric, heat-shrink, file tape, and other non-laminated types |
+
+Brother documents that when non-laminated TZe is loaded and half-cut is requested,
+the printer disables half-cut and uses auto-cut (full cut) instead:
+
+- [Label feeding and cutting options (FAQ)](https://support.brother.com/g/b/faqend.aspx?c=hk&faqid=faqp00100033_000)
+- [PT-E920BT specifications (media widths)](https://support.brother.com/g/s/es/htmldoc/ptouch/e720bt/uken/html/GUID-3EA582BC-2E97-4C09-BDB7-C03AA57ED33B_1.html)
+
+This library raises `HalfCutNotSupportedError` when `half_cut=True` and the status
+reply reports a non-laminated media type, rather than silently falling back to full cuts.
+
 ## Applicability note
 
 Brother has not published a PT-E920BT-specific Raster Command Reference. The tables
