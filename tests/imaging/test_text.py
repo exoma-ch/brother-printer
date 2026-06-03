@@ -215,3 +215,31 @@ def test_render_text_feeds_image_to_raster_without_scaling_error():
         raster_line(line)
     job = encode_job(tape, lines)
     assert len(job) > len(lines) * RASTER_LINE_BYTES
+
+
+def _text_to_job(text: str, tape: TapeWidth, **kwargs: object) -> bytes:
+    image = render_text(text, tape, **kwargs)
+    lines = image_to_raster(image, tape, rotate=0)
+    for line in lines:
+        raster_line(line)
+    return encode_job(tape, lines)
+
+
+@pytest.mark.parametrize(
+    ("label", "kwargs"),
+    [
+        ("Single", {}),
+        ("Line1\nLine2", {}),
+        ("Align", {"align": "left"}),
+        ("Align", {"align": "right"}),
+        ("Sized", {"font_size": 48}),
+        ("Turn", {"rotate": 90}),
+        ("Turn", {"rotate": 180}),
+        ("Turn", {"rotate": 270}),
+    ],
+)
+def test_render_text_end_to_end_feature_matrix(label, kwargs):
+    """Text labels across features produce valid raster print jobs."""
+    tape = TapeWidth.MM_24
+    job = _text_to_job(label, tape, **kwargs)
+    assert len(job) > RASTER_LINE_BYTES
