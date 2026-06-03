@@ -119,7 +119,7 @@ def test_print_command_rejects_paths_and_csv_together(mock_print_image):
         )
 
     assert result.exit_code == 2
-    assert "not both" in result.output
+    assert "exactly one" in result.output
     mock_print_image.assert_not_called()
 
 

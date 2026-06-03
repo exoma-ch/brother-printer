@@ -16,6 +16,7 @@ from brother_printer import (
     discover_printers,
     print_image,
     print_strip,
+    print_text,
     query_status,
     select_printer,
 )
@@ -142,6 +143,37 @@ def status_cmd(printer: str | None) -> None:
     default=None,
     help="CSV file listing images to print as one label strip.",
 )
+@click.option(
+    "--text",
+    default=None,
+    help="Text to print (use \\n for multiple lines).",
+)
+@click.option(
+    "--font",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="TrueType font file (default: built-in scalable font).",
+)
+@click.option(
+    "--font-size",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Font size in pixels (default: auto-fit to tape height).",
+)
+@click.option(
+    "--align",
+    type=click.Choice(["left", "center", "right"]),
+    default="center",
+    show_default=True,
+    help="Horizontal alignment for each line of text.",
+)
+@click.option(
+    "--line-spacing",
+    type=float,
+    default=0.0,
+    show_default=True,
+    help="Extra spacing between lines as a fraction of line height.",
+)
 @click.option("--auto-cut/--no-cut", default=True, help="Auto-cut after printing.")
 @click.option(
     "--half-cut/--no-half-cut", default=False, help="Half-cut peelable labels."
@@ -164,7 +196,7 @@ def status_cmd(printer: str | None) -> None:
     type=click.Choice(["0", "90", "180", "270"]),
     default="0",
     show_default=True,
-    help="Rotate image before printing.",
+    help="Rotate label before printing (0/90/180/270 degrees).",
 )
 @click.option(
     "--margin",
@@ -183,6 +215,11 @@ def print_cmd(
     paths: tuple[Path, ...],
     tape: str,
     csv: Path | None,
+    text: str | None,
+    font: Path | None,
+    font_size: int | None,
+    align: str,
+    line_spacing: float,
     auto_cut: bool,
     half_cut: bool,
     strip: bool,
@@ -192,13 +229,19 @@ def print_cmd(
     margin: int,
     printer: str | None,
 ) -> None:
-    """Print one or more image files on a connected PT-E920BT."""
-    if paths and csv is not None:
-        click.echo("Provide image paths or --csv, not both.", err=True)
-        sys.exit(2)
-
-    if not paths and csv is None:
-        click.echo("Provide at least one image path or --csv.", err=True)
+    """Print image files or text on a connected PT-E920BT."""
+    sources = sum(bool(x) for x in (paths, csv is not None, text is not None))
+    if sources != 1:
+        if sources > 1:
+            click.echo(
+                "Provide exactly one of image paths, --csv, or --text.",
+                err=True,
+            )
+        else:
+            click.echo(
+                "Provide at least one image path, --csv, or --text.",
+                err=True,
+            )
         sys.exit(2)
 
     tape_width = _TAPE_CHOICES[tape]
@@ -212,7 +255,24 @@ def print_cmd(
     }
 
     try:
-        if csv is not None:
+        if text is not None:
+            label_text = text.replace("\\n", "\n")
+            written = print_text(
+                label_text,
+                tape_width,
+                copies=copies,
+                font_path=str(font) if font is not None else None,
+                font_size=font_size,
+                align=align,
+                line_spacing=line_spacing,
+                rotate=int(rotate),
+                margin=margin,
+                threshold=threshold,
+                auto_cut=auto_cut,
+                half_cut=half_cut,
+                printer=printer,
+            )
+        elif csv is not None:
             written = _print_csv_strip(csv, tape_width, print_kwargs)
         elif len(paths) > 1 or strip:
             written = _print_paths_strip(

@@ -7,6 +7,7 @@ from brother_printer.printing import (
     TapeMismatchError,
     print_image,
     print_strip,
+    print_text,
     query_status,
     select_printer,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "discover_printers",
     "print_image",
     "print_strip",
+    "print_text",
     "query_status",
     "select_printer",
 ]
