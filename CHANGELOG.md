@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
-  - `render_text`, `max_font_size`, and `print_text` for multi-line labels with auto-fit font size, alignment, spacing, and baked-in rotation
+  - `render_text`, `max_font_size`, and `print_text` for multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
+  - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
   - CLI `brother-printer print --text` with `--font`, `--font-size`, `--align`, and `--line-spacing`
   - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
 
