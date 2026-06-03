@@ -14,7 +14,7 @@ from brother_printer.imaging.raster import (
     resize_to_tape_width,
     to_monochrome,
 )
-from brother_printer.protocol.constants import RASTER_LINE_BYTES
+from brother_printer.protocol.constants import HEAD_PINS, RASTER_LINE_BYTES
 from brother_printer.protocol.encoder import encode_job, raster_line
 from brother_printer.protocol.enums import TapeWidth
 
@@ -196,13 +196,23 @@ def test_pack_raster_lines_emits_70_byte_lines():
     for line in lines:
         assert len(line) == RASTER_LINE_BYTES
 
-    left_bytes = tape.print_area_left_pins // 8
-    left_bit = 7 - (tape.print_area_left_pins % 8)
-    assert lines[0][left_bytes] & (1 << left_bit)
-    bottom_byte = (tape.print_area_left_pins + tape.print_area_pins - 1) // 8
-    bottom_bit = 7 - ((tape.print_area_left_pins + tape.print_area_pins - 1) % 8)
+    right_pins = HEAD_PINS - tape.print_area_left_pins - tape.print_area_pins
+    right_bytes = right_pins // 8
+    right_bit = 7 - (right_pins % 8)
+    assert lines[0][right_bytes] & (1 << right_bit)
+    bottom_pin = right_pins + tape.print_area_pins - 1
+    bottom_byte = bottom_pin // 8
+    bottom_bit = 7 - (bottom_pin % 8)
     assert lines[0][bottom_byte] & (1 << bottom_bit)
     assert not any(lines[1])
+
+
+def test_pack_raster_lines_uses_right_margin_offset():
+    """Print area is placed at the right-margin offset per Raster Command Reference §2.3.5."""
+    tape = TapeWidth.MM_24
+    right_pins = HEAD_PINS - tape.print_area_left_pins - tape.print_area_pins
+    assert right_pins == 128
+    assert right_pins != tape.print_area_left_pins
 
 
 def test_pack_raster_lines_requires_print_area_height():

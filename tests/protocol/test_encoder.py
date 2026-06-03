@@ -7,6 +7,7 @@ import pytest
 from brother_printer.protocol.constants import (
     CMD_ADVANCED_MODE,
     CMD_COMPRESSION,
+    CMD_CUT_EACH,
     CMD_EJECT,
     CMD_INITIALIZE,
     CMD_MARGIN,
@@ -21,8 +22,10 @@ from brother_printer.protocol.constants import (
 )
 from brother_printer.protocol.encoder import (
     advanced_mode,
+    cut_each,
     eject,
     encode_job,
+    encode_strip_job,
     initialize,
     invalidate,
     print_information,
@@ -100,6 +103,96 @@ def test_advanced_mode_half_cut_and_no_chain():
     assert advanced_mode(half_cut=True, no_chain=True) == CMD_ADVANCED_MODE + bytes(
         [0x0C]
     )
+
+
+def test_cut_each():
+    """cut_each() encodes ESC i A with page count byte."""
+    assert cut_each(1) == CMD_CUT_EACH + bytes([0x01])
+    assert cut_each(3) == CMD_CUT_EACH + bytes([0x03])
+    assert cut_each(0) == CMD_CUT_EACH + bytes([0x00])
+
+
+def test_cut_each_rejects_out_of_range():
+    """cut_each() rejects values outside 0..255."""
+    with pytest.raises(ValueError, match="cut each"):
+        cut_each(-1)
+    with pytest.raises(ValueError, match="cut each"):
+        cut_each(256)
+
+
+def test_encode_strip_job_two_pages():
+    """encode_strip_job() chains pages with FF between and Control-Z at end."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line]],
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+    )
+    adv = advanced_mode(half_cut=True, no_chain=True)
+    assert job.endswith(CMD_EJECT)
+    assert CMD_CUT_EACH not in job
+    assert job.count(set_mode(auto_cut=False)) == 2
+    assert job.count(adv) == 2
+    assert job.index(CMD_PRINT_INFO) < job.index(adv)
+    assert job.count(CMD_PRINT_INFO) == 2
+    assert print_information(TapeWidth.MM_24, 1, last_page=False) in job
+    assert print_information(TapeWidth.MM_24, 1, last_page=True) in job
+
+
+def test_encode_strip_job_matches_golden():
+    """encode_strip_job() with one page matches the single-page golden job."""
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[_blank_raster_line()]],
+        auto_cut=True,
+        margin_dots=14,
+    )
+    golden = _load_golden("minimal_job_24mm.bin")
+    assert job == golden
+
+
+def test_encode_strip_job_half_cut_disables_auto_cut():
+    """Half-cut strips disable auto-cut and omit cut-each; full-cut strips unchanged."""
+    line = _blank_raster_line()
+    half_cut_job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line], [line]],
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+    )
+    adv = advanced_mode(half_cut=True, no_chain=True)
+    assert CMD_CUT_EACH not in half_cut_job
+    assert half_cut_job.count(set_mode(auto_cut=False)) == 3
+    assert half_cut_job.count(adv) == 3
+    assert half_cut_job.index(CMD_PRINT_INFO) < half_cut_job.index(adv)
+
+    full_cut_job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line], [line]],
+        auto_cut=True,
+        half_cut=False,
+        no_chain=True,
+    )
+    cut_each_3 = CMD_CUT_EACH + bytes([0x03])
+    assert full_cut_job.count(cut_each_3) == 3
+    assert full_cut_job.count(set_mode(auto_cut=True)) == 3
+
+
+def test_encode_strip_job_three_page_golden():
+    """encode_strip_job() produces stable bytes for a three-page half-cut strip."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line], [line], [line]],
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+    )
+    golden = _load_golden("strip_job_24mm_3page_half_cut.bin")
+    assert job == golden
 
 
 def test_set_margin():

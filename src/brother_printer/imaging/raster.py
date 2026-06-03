@@ -107,6 +107,7 @@ def pack_raster_lines(image: Image.Image, tape_width: TapeWidth) -> list[bytes]:
         raise ImagingError(msg)
 
     left_pins = tape_width.print_area_left_pins
+    right_pins = HEAD_PINS - left_pins - print_area
     if left_pins + print_area > HEAD_PINS:
         msg = "print area exceeds print head width"
         raise ImagingError(msg)
@@ -118,7 +119,7 @@ def pack_raster_lines(image: Image.Image, tape_width: TapeWidth) -> list[bytes]:
         line = bytearray(RASTER_LINE_BYTES)
         for row in range(height):
             if pixels[column, row] == 0:
-                _set_pin(line, left_pins + row)
+                _set_pin(line, right_pins + row)
         lines.append(bytes(line))
     return lines
 

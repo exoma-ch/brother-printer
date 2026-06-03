@@ -8,7 +8,8 @@ from pathlib import Path
 import click
 from PIL import Image
 
-from brother_printer import PrintError, TapeWidth, print_image
+from brother_printer import PrintError, TapeWidth, print_image, print_strip
+from brother_printer.cli.csv_jobs import load_csv_jobs
 from brother_printer.imaging.errors import ImagingError
 from brother_printer.transport import discover
 from brother_printer.transport.errors import TransportError
@@ -51,7 +52,8 @@ def discover_cmd() -> None:
 
 @main.command("print")
 @click.argument(
-    "path",
+    "paths",
+    nargs=-1,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.option(
@@ -60,7 +62,21 @@ def discover_cmd() -> None:
     type=click.Choice(sorted(_TAPE_CHOICES.keys())),
     help="TZe tape width loaded in the printer.",
 )
+@click.option(
+    "--csv",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="CSV file listing images to print as one label strip.",
+)
 @click.option("--auto-cut/--no-cut", default=True, help="Auto-cut after printing.")
+@click.option(
+    "--half-cut/--no-half-cut", default=False, help="Half-cut peelable labels."
+)
+@click.option(
+    "--strip/--no-strip",
+    default=False,
+    help="Chain copies or multiple images into one label strip.",
+)
 @click.option("--copies", type=click.IntRange(min=1), default=1, show_default=True)
 @click.option(
     "--threshold",
@@ -90,31 +106,85 @@ def discover_cmd() -> None:
     help="Printer identifier from discover (default: first found).",
 )
 def print_cmd(
-    path: Path,
+    paths: tuple[Path, ...],
     tape: str,
+    csv: Path | None,
     auto_cut: bool,
+    half_cut: bool,
+    strip: bool,
     copies: int,
     threshold: int,
     rotate: str,
     margin: int,
     printer: str | None,
 ) -> None:
-    """Print an image file on a connected PT-E920BT."""
+    """Print one or more image files on a connected PT-E920BT."""
+    if paths and csv is not None:
+        click.echo("Provide image paths or --csv, not both.", err=True)
+        sys.exit(2)
+
+    if not paths and csv is None:
+        click.echo("Provide at least one image path or --csv.", err=True)
+        sys.exit(2)
+
     tape_width = _TAPE_CHOICES[tape]
+    print_kwargs = {
+        "printer": printer,
+        "threshold": threshold,
+        "rotate": int(rotate),
+        "margin": margin,
+        "auto_cut": auto_cut,
+        "half_cut": half_cut,
+    }
+
     try:
-        with Image.open(path) as image:
-            written = print_image(
-                image,
-                tape_width,
-                printer=printer,
-                copies=copies,
-                threshold=threshold,
-                rotate=int(rotate),
-                margin=margin,
-                auto_cut=auto_cut,
+        if csv is not None:
+            written = _print_csv_strip(csv, tape_width, print_kwargs)
+        elif len(paths) > 1 or strip:
+            written = _print_paths_strip(
+                paths, tape_width, copies=copies, **print_kwargs
             )
+        else:
+            with Image.open(paths[0]) as image:
+                written = print_image(
+                    image,
+                    tape_width,
+                    copies=copies,
+                    **print_kwargs,
+                )
+    except ValueError as exc:
+        click.echo(str(exc), err=True)
+        sys.exit(2)
     except (PrintError, TransportError, ImagingError) as exc:
         click.echo(str(exc), err=True)
         sys.exit(1)
 
     click.echo(f"Printed {written} bytes.")
+
+
+def _print_paths_strip(
+    paths: tuple[Path, ...],
+    tape_width: TapeWidth,
+    *,
+    copies: int,
+    **print_kwargs: object,
+) -> int:
+    images: list[Image.Image] = []
+    for path in paths:
+        with Image.open(path) as image:
+            images.append(image.copy())
+    return print_strip(images, tape_width, copies=copies, **print_kwargs)
+
+
+def _print_csv_strip(
+    csv_path: Path,
+    tape_width: TapeWidth,
+    print_kwargs: dict[str, object],
+) -> int:
+    jobs = load_csv_jobs(csv_path)
+    images: list[Image.Image] = []
+    for job in jobs:
+        with Image.open(job.path) as image:
+            for _ in range(job.copies):
+                images.append(image.copy())
+    return print_strip(images, tape_width, copies=1, **print_kwargs)

@@ -36,7 +36,99 @@ def test_print_command_success(mock_print_image):
     assert kwargs["rotate"] == 0
     assert kwargs["margin"] == 0
     assert kwargs["auto_cut"] is True
+    assert kwargs["half_cut"] is False
     assert kwargs["printer"] is None
+
+
+@patch("brother_printer.cli.main.print_strip")
+def test_print_command_multiple_paths_use_strip(mock_print_strip):
+    """print uses print_strip() when multiple image paths are provided."""
+    mock_print_strip.return_value = 4096
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        _write_test_image(Path("b.png"))
+        result = runner.invoke(main, ["print", "a.png", "b.png", "--tape", "24mm"])
+
+    assert result.exit_code == 0
+    mock_print_strip.assert_called_once()
+    args, kwargs = mock_print_strip.call_args
+    assert args[1] == TapeWidth.MM_24
+    assert len(args[0]) == 2
+    assert kwargs["copies"] == 1
+    assert kwargs["half_cut"] is False
+
+
+@patch("brother_printer.cli.main.print_strip")
+def test_print_command_strip_flag_chains_copies(mock_print_strip):
+    """print uses print_strip() for a single image when --strip is set."""
+    mock_print_strip.return_value = 3000
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("label.png"))
+        result = runner.invoke(
+            main,
+            ["print", "label.png", "--tape", "24mm", "--strip", "--copies", "3"],
+        )
+
+    assert result.exit_code == 0
+    mock_print_strip.assert_called_once()
+    _, kwargs = mock_print_strip.call_args
+    assert kwargs["copies"] == 3
+
+
+@patch("brother_printer.cli.main.print_strip")
+def test_print_command_csv_uses_strip(mock_print_strip):
+    """print uses print_strip() when --csv is provided."""
+    mock_print_strip.return_value = 5000
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        _write_test_image(Path("b.png"))
+        Path("jobs.csv").write_text(
+            "image,copies\na.png,2\nb.png,1\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(
+            main,
+            ["print", "--tape", "24mm", "--csv", "jobs.csv", "--half-cut"],
+        )
+
+    assert result.exit_code == 0
+    mock_print_strip.assert_called_once()
+    args, kwargs = mock_print_strip.call_args
+    assert len(args[0]) == 3
+    assert kwargs["copies"] == 1
+    assert kwargs["half_cut"] is True
+
+
+@patch("brother_printer.cli.main.print_image")
+def test_print_command_rejects_paths_and_csv_together(mock_print_image):
+    """print exits 2 when both paths and --csv are provided."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("label.png"))
+        Path("jobs.csv").write_text("image\nlabel.png\n", encoding="utf-8")
+        result = runner.invoke(
+            main,
+            ["print", "label.png", "--tape", "24mm", "--csv", "jobs.csv"],
+        )
+
+    assert result.exit_code == 2
+    assert "not both" in result.output
+    mock_print_image.assert_not_called()
+
+
+def test_print_command_requires_input_source():
+    """print exits 2 when no image path or CSV is provided."""
+    runner = CliRunner()
+    result = runner.invoke(main, ["print", "--tape", "24mm"])
+    assert result.exit_code == 2
+    assert "at least one" in result.output
 
 
 @patch("brother_printer.cli.main.print_image")
@@ -78,6 +170,7 @@ def test_print_command_passes_options(mock_print_image):
         "rotate": 90,
         "margin": 5,
         "auto_cut": False,
+        "half_cut": False,
     }
 
 
