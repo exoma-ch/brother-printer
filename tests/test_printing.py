@@ -459,3 +459,73 @@ def test_print_strip_raises_half_cut_on_non_laminated(
             TapeWidth.MM_36,
             half_cut=True,
         )
+
+
+@patch("brother_printer.printing.encode_job")
+@patch("brother_printer.printing.image_to_raster")
+@patch("brother_printer.printing.render_text")
+@patch("brother_printer.printing.decode_status")
+@patch("brother_printer.printing.status_request", return_value=b"\x1biS")
+@patch("brother_printer.printing.UsbTransport")
+@patch("brother_printer.printing.discover")
+def test_print_text_composes_render_and_raster(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_render_text,
+    mock_image_to_raster,
+    mock_encode_job,
+):
+    """print_text() renders text then prints with rotation already baked in."""
+    from brother_printer.printing import print_text
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    rendered = Image.new("L", (120, 320), 255)
+    mock_render_text.return_value = rendered
+    mock_image_to_raster.return_value = [b"\x00" * 70] * 120
+    mock_encode_job.return_value = b"job-bytes"
+
+    written = print_text(
+        "Hello\nWorld",
+        TapeWidth.MM_24,
+        font_path="/fonts/test.ttf",
+        font_size=32,
+        align="left",
+        line_spacing=0.25,
+        rotate=90,
+        margin=4,
+        copies=2,
+        threshold=200,
+        half_cut=True,
+        auto_cut=False,
+    )
+
+    mock_render_text.assert_called_once_with(
+        "Hello\nWorld",
+        TapeWidth.MM_24,
+        font_path="/fonts/test.ttf",
+        font_size=32,
+        align="left",
+        line_spacing=0.25,
+        rotate=90,
+        margin=4,
+    )
+    mock_image_to_raster.assert_called_once_with(
+        rendered,
+        TapeWidth.MM_24,
+        threshold=200,
+        rotate=0,
+        margin=0,
+        allow_distortion=False,
+    )
+    mock_encode_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        mock_image_to_raster.return_value,
+        auto_cut=False,
+        half_cut=True,
+    )
+    assert written == 200
