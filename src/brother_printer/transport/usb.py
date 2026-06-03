@@ -95,6 +95,7 @@ _DEFAULT_INTERFACE = 0
 _DEFAULT_TIMEOUT_MS = 5000
 # Bulk IN max packet — see docs/vendor/usb-ids.md
 _BULK_IN_MAX_PACKET = 64
+_BULK_OUT_CHUNK = 16 * 1024
 
 
 class UsbTransport:
@@ -158,13 +159,22 @@ class UsbTransport:
             self._opened = False
 
     def write(self, data: bytes) -> int:
-        """Write bytes to the printer bulk OUT endpoint."""
+        """Write all bytes to the printer bulk OUT endpoint."""
         self._ensure_open()
         assert self._ep_out is not None
+        total = 0
         try:
-            return self._ep_out.write(data, self._default_timeout_ms)
+            while total < len(data):
+                chunk = data[total : total + _BULK_OUT_CHUNK]
+                sent = self._ep_out.write(chunk, self._default_timeout_ms)
+                if not sent:
+                    raise TransportTimeoutError(
+                        f"bulk write stalled after {total}/{len(data)} bytes"
+                    )
+                total += sent
         except USBError as exc:
             raise map_usb_error(exc) from exc
+        return total
 
     def read(self, n: int, timeout_ms: int | None = None) -> bytes:
         """Read up to n bytes from the printer bulk IN endpoint."""

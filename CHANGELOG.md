@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
+  - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
+  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`
+  - Minimal-tape matrix: P1 sends one `encode_strip_job` chained strip (FF between pages, single end cut) for rotations/threshold/distortion; plus raw encode, half-cut strip, and full-cut copies
+
 - **PT-E920BT vendor documentation** ([#1](https://github.com/exoma-ch/brother-printer/issues/1))
   - Provenance index, fetch/convert scripts, User's Guide and raster text dumps, USB ID and TZe tape width tables under `docs/vendor/`
 
@@ -65,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Hardware test layout homogenized** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
+  - Connectivity, status, and print tests consolidated under `tests/hardware/`; removed scattered `*_hardware*` modules in `tests/protocol/` and `tests/transport/`
+  - P1 visual-variations strip uses one chained job instead of repeated `print_image` ejects (eliminates blank tape between segments); hardware margin case dropped
+
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
   - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
   - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image
@@ -75,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+
+- **UsbTransport.write sends full large jobs** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
+  - Bulk OUT writes loop in 16 KiB chunks until all bytes are sent; fixes truncated multi-page strips when the printer throttles USB intake
 
 - **Half-cut label strips and centered QR on tape** ([#21](https://github.com/exoma-ch/brother-printer/issues/21))
   - Multi-page half-cut strips emit a per-page control block (ESC i z before ESC i K), disable auto-cut, and omit cut-each

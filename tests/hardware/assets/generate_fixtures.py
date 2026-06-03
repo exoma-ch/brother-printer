@@ -1,9 +1,13 @@
-"""Generate QR PNG fixtures sized for each TZe tape width.
+"""Generate PNG fixtures sized for each TZe tape width.
 
-Each fixture is a square canvas with side ``TapeWidth.print_area_pins`` so
+Each QR fixture is a square canvas with side ``TapeWidth.print_area_pins`` so
 ``image_to_raster()`` uses an integer scale factor of 1 (QR-safe) and remains
 rotatable. A solid black bar along the top edge makes rotation visible on
 hardware (after ``rotate=90`` the bar appears on a side edge).
+
+Grayscale gradient fixtures exercise ``threshold`` in hardware tests. The shared
+``distort_100.png`` (100×100 px) requires a non-integer scale factor for every
+supported tape width so ``allow_distortion=True`` is meaningful.
 
 Run via::
 
@@ -20,6 +24,9 @@ from PIL import Image, ImageDraw
 from brother_printer.protocol.enums import TapeWidth
 
 _ASSETS_DIR = Path(__file__).resolve().parent
+
+_DISTORT_SIZE = 100
+_DISTORT_FILENAME = "distort_100.png"
 
 _TAPE_FILENAMES: dict[TapeWidth, str] = {
     TapeWidth.MM_3_5: "qr_3.5mm.png",
@@ -60,8 +67,27 @@ def _render_qr(data: str, *, size: int) -> Image.Image:
     return canvas
 
 
+def _render_grayscale_gradient(*, size: int) -> Image.Image:
+    """Vertical grayscale gradient (L mode) for threshold hardware tests."""
+    canvas = Image.new("L", (size, size), 255)
+    draw = ImageDraw.Draw(canvas)
+    for y in range(size):
+        gray = int(255 * y / max(size - 1, 1))
+        draw.line([(0, y), (size - 1, y)], fill=gray)
+    return canvas
+
+
+def _render_distort_source(*, size: int = _DISTORT_SIZE) -> Image.Image:
+    """Square image whose height yields a non-integer scale to every tape width."""
+    canvas = Image.new("L", (size, size), 255)
+    draw = ImageDraw.Draw(canvas)
+    inset = max(4, size // 10)
+    draw.rectangle((inset, inset, size - inset - 1, size - inset - 1), fill=0)
+    return canvas
+
+
 def generate_all(output_dir: Path | None = None) -> list[Path]:
-    """Write one QR PNG per tape width and return the output paths."""
+    """Write QR, grayscale, and distort fixtures; return output paths."""
     target_dir = output_dir or _ASSETS_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
@@ -73,6 +99,16 @@ def generate_all(output_dir: Path | None = None) -> list[Path]:
         path = target_dir / filename
         image.save(path)
         written.append(path)
+
+        gray_name = filename.replace("qr_", "gray_")
+        gray_image = _render_grayscale_gradient(size=size)
+        gray_path = target_dir / gray_name
+        gray_image.save(gray_path)
+        written.append(gray_path)
+
+    distort_path = target_dir / _DISTORT_FILENAME
+    _render_distort_source().save(distort_path)
+    written.append(distort_path)
 
     return written
 
