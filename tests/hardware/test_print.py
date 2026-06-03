@@ -6,7 +6,7 @@ Run with::
 
 Consumes tape. Requires USB passthrough, udev permissions, a loaded TZe tape
 matching committed fixtures, and ``BROTHER_PRINTER_HARDWARE=1``. See TESTING.md
-for the print matrix (P0–P3).
+for the print matrix (P0–P4).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from PIL import Image
 
 from brother_printer import print_strip
 from brother_printer.imaging.raster import image_to_raster
+from brother_printer.imaging.text import render_text
 from brother_printer.protocol import (
     RASTER_LINE_BYTES,
     STATUS_REPLY_SIZE,
@@ -155,6 +156,28 @@ def test_print_full_cut_strip_copies(
     _ensure_status_readable(printer)
     with Image.open(fixture_path) as image:
         written = print_strip([image.copy()], loaded_tape, copies=2)
+
+    assert written > 0
+    _wait_for_printer_idle(printer)
+
+
+def test_print_text_feature_matrix(
+    loaded_tape: TapeWidth,
+    printer: PrinterInfo,
+) -> None:
+    """P4: print_strip() prints text labels (auto-fit, multi-line, size, rotation)."""
+    _wait_for_printer_idle(printer)
+
+    cases: list[tuple[str, dict[str, Any]]] = [
+        ("AUTO", {}),
+        ("Line1\nLine2", {"align": "left"}),
+        ("SIZE", {"font_size": 32}),
+        ("TURN", {"rotate": 90}),
+    ]
+    images = [render_text(text, loaded_tape, **kwargs) for text, kwargs in cases]
+
+    _ensure_status_readable(printer)
+    written = print_strip(images, loaded_tape, auto_cut=True)
 
     assert written > 0
     _wait_for_printer_idle(printer)
