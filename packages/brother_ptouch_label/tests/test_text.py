@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
@@ -11,6 +13,8 @@ from brother_ptouch_driver.protocol.constants import RASTER_LINE_BYTES
 from brother_ptouch_driver.protocol.encoder import encode_job, raster_line
 from brother_ptouch_driver.protocol.enums import TapeWidth
 from brother_ptouch_label.text import max_font_size, render_text
+
+_GOLDEN_DIR = Path(__file__).resolve().parent / "assets" / "golden"
 
 _ALL_TAPES = list(TapeWidth)
 _VALID_ROTATIONS = [0, 90]
@@ -249,6 +253,22 @@ def test_render_text_rotate_90_rejects_overflowing_font():
     tape = TapeWidth.MM_12
     with pytest.raises(ImagingError, match="exceeds printable width"):
         render_text("WIDE", tape, rotate=90, font_size=200)
+
+
+def test_render_text_default_caps_font_size(golden_font: Path) -> None:
+    """Default font size is capped at 48px on wide tape (matches golden)."""
+    expected_path = _GOLDEN_DIR / "default_cap_36mm.png"
+    assert expected_path.is_file(), (
+        "missing golden default_cap_36mm.png; run: just gen-fixtures-labels"
+    )
+    expected = Image.open(expected_path).convert("L")
+    actual = render_text(
+        "Test",
+        TapeWidth.MM_36,
+        font_path=str(golden_font),
+    )
+    assert actual.size == expected.size
+    assert actual.tobytes() == expected.tobytes()
 
 
 def test_render_text_default_font_size_floors_small_tape():

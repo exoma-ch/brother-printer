@@ -29,6 +29,7 @@ class _FixtureSpec:
     tape_width: TapeWidth
     align: str = "center"
     rotate: int = 0
+    font_size: int = _FONT_SIZE
 
 
 _FIXTURES: tuple[_FixtureSpec, ...] = (
@@ -54,6 +55,12 @@ _FIXTURES: tuple[_FixtureSpec, ...] = (
     ),
     _FixtureSpec("rotate_0_24mm.png", "Rotate", TapeWidth.MM_24, rotate=0),
     _FixtureSpec("rotate_90_24mm.png", "Rotate", TapeWidth.MM_24, rotate=90),
+    _FixtureSpec(
+        "default_cap_36mm.png",
+        "Test",
+        TapeWidth.MM_36,
+        font_size=48,
+    ),
 )
 
 
@@ -68,7 +75,7 @@ def generate_all(output_dir: Path | None = None) -> list[Path]:
             spec.text,
             spec.tape_width,
             font_path=str(_FONT_PATH),
-            font_size=_FONT_SIZE,
+            font_size=spec.font_size,
             align=spec.align,
             rotate=spec.rotate,
         )
