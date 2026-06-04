@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ADR-0003 documents the split, strict image-height contract, and `--scale` behavior
 
 - **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
-  - Multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
+  - Multi-line labels with auto-fit font size (capped at 48px), alignment, spacing, and baked-in rotation
   - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
   - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
 
@@ -28,9 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Text package golden-image tests and per-package test recipes** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
   - Bundled DejaVuSans.ttf and committed PNG goldens for deterministic `render_text` regression tests
-  - `just test-core`, `just test-text`, and `just gen-text-images` for scoped test runs and fixture regeneration
+  - `just test-core`, `just test-text`, and `just gen-fixtures-labels` for scoped test runs and fixture regeneration
+
+- **Scoped hardware test recipes** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
+  - `just test-connect` (connectivity + status, no tape), `just test-print` (print matrix), and `just test-all` (full suite incl. hardware)
 
 ### Changed
+
+- **Hardware print test fixtures and coverage** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
+  - Per-width `label_{width}mm.png` text-only fixtures stating the image height in mm and pixels and the rendered font size; minimum-width (non-square) canvas, height = tape print area; replaces `qr_*` assets
+  - Zero-tape negative-path tests assert `TapeMismatchError` and `ImageScalingError` guards
+  - Hardware matrix adds `print_png()` and `print_image(copies=2)` on the loaded tape
 
 - **Package and CLI rename to brother-ptouch-***
   - Workspace packages: `brother-ptouch-driver` (`import brother_ptouch_driver`) and `brother-ptouch-label` (`import brother_ptouch_label`)
@@ -52,7 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `scale=True` uses lossless integer nearest-neighbor when possible; non-integer factors resample
   - Renamed `allow_distortion` to `scale` across library and CLI
 
+- **Coverage scoped to package src**
+  - `just test-cov` reports coverage for `packages/*/src` only; test modules are no longer included
+
 ### Removed
+
+- **Driver imaging rotate and margin** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - Removed `--rotate`/`--margin` from `brother-ptouch-driver` CLI and `rotate`/`margin` from `print_image`, `print_png`, `print_strip`, and `image_to_raster`
+  - Removed `apply_rotation` and `apply_margin` from the imaging pipeline; rotation and margins belong in `brother-ptouch-label`
 
 - **Text printing from core package** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
   - `render_text`, `max_font_size`, and `print_text` no longer exported from `brother_printer`
@@ -60,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
   - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
-  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`
+  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-fixtures-driver`
   - Minimal-tape matrix: P1 sends one `encode_strip_job` chained strip (FF between pages, single end cut) for rotations/threshold/distortion; plus raw encode, half-cut strip, and full-cut copies
 
 - **PT-E920BT vendor documentation** ([#1](https://github.com/exoma-ch/brother-printer/issues/1))
@@ -102,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI print command with tape selection and auto-cut** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
   - `brother-printer print PATH --tape {3.5|6|9|12|18|24|36}mm` with `--auto-cut`/`--no-cut`, `--copies`, `--threshold`, `--rotate`, `--margin`, and `--printer`
   - `print_image()` library orchestrator with tape-width safety check against printer status
-  - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-test-images`
+  - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-fixtures-driver`
 
 - **CLI status, discover --status, and info tapes** ([#8](https://github.com/exoma-ch/brother-printer/issues/8), [#19](https://github.com/exoma-ch/brother-printer/issues/19))
   - `brother-printer status [-p ID]` shows loaded tape, color, media type, phase, and error state
@@ -124,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - P1 visual-variations strip uses one chained job instead of repeated `print_image` ejects (eliminates blank tape between segments); hardware margin case dropped
 
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
-  - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
+  - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-fixtures-driver`
   - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image
   - Print-matrix hardware test waits until the printer is idle and uses longer status timeouts; matrix trimmed to two rotation cases (auto-cut removed because single-page jobs always feed and cut when no-chain is enabled)
 

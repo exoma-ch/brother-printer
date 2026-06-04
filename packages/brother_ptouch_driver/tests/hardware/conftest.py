@@ -27,33 +27,21 @@ PRINTER_REQUIRED_MSG = (
 )
 
 STATUS_READ_TIMEOUT_MS = 15_000
-# Full matrix (P1 long strip + cuts) can exceed 60s on hardware; allow 3 minutes.
+# Chained print jobs (H1/H2) can exceed 60s on hardware; allow 3 minutes.
 IDLE_WAIT_TIMEOUT_MS = 180_000
 STATUS_POLL_TIMEOUT_MS = 60_000
 IDLE_POLL_INTERVAL_S = 0.5
 
 _ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 
-DISTORT_FIXTURE = _ASSETS_DIR / "distort_100.png"
-
-_TAPE_FIXTURES: dict[TapeWidth, Path] = {
-    TapeWidth.MM_3_5: _ASSETS_DIR / "qr_3.5mm.png",
-    TapeWidth.MM_6: _ASSETS_DIR / "qr_6mm.png",
-    TapeWidth.MM_9: _ASSETS_DIR / "qr_9mm.png",
-    TapeWidth.MM_12: _ASSETS_DIR / "qr_12mm.png",
-    TapeWidth.MM_18: _ASSETS_DIR / "qr_18mm.png",
-    TapeWidth.MM_24: _ASSETS_DIR / "qr_24mm.png",
-    TapeWidth.MM_36: _ASSETS_DIR / "qr_36mm.png",
-}
-
-_GRAY_FIXTURES: dict[TapeWidth, Path] = {
-    TapeWidth.MM_3_5: _ASSETS_DIR / "gray_3.5mm.png",
-    TapeWidth.MM_6: _ASSETS_DIR / "gray_6mm.png",
-    TapeWidth.MM_9: _ASSETS_DIR / "gray_9mm.png",
-    TapeWidth.MM_12: _ASSETS_DIR / "gray_12mm.png",
-    TapeWidth.MM_18: _ASSETS_DIR / "gray_18mm.png",
-    TapeWidth.MM_24: _ASSETS_DIR / "gray_24mm.png",
-    TapeWidth.MM_36: _ASSETS_DIR / "gray_36mm.png",
+_LABEL_FIXTURES: dict[TapeWidth, Path] = {
+    TapeWidth.MM_3_5: _ASSETS_DIR / "label_3.5mm.png",
+    TapeWidth.MM_6: _ASSETS_DIR / "label_6mm.png",
+    TapeWidth.MM_9: _ASSETS_DIR / "label_9mm.png",
+    TapeWidth.MM_12: _ASSETS_DIR / "label_12mm.png",
+    TapeWidth.MM_18: _ASSETS_DIR / "label_18mm.png",
+    TapeWidth.MM_24: _ASSETS_DIR / "label_24mm.png",
+    TapeWidth.MM_36: _ASSETS_DIR / "label_36mm.png",
 }
 
 HARDWARE_PYTESTMARK = [
@@ -74,9 +62,8 @@ def _read_status(transport: UsbTransport):
 def _ensure_status_readable(printer: PrinterInfo) -> None:
     """Poll until the printer answers status (any phase).
 
-    Use before sending another job while the previous feed may still be active
-    (e.g. chained ``auto_cut=False`` segments in P1). Unlike idle wait, does not
-    require EDITING phase.
+    Use before sending another job while the previous feed may still be active.
+    Unlike idle wait, does not require EDITING phase.
     """
     deadline = time.monotonic() + STATUS_POLL_TIMEOUT_MS / 1000.0
 
@@ -170,17 +157,14 @@ def laminated_tape(printer: PrinterInfo) -> TapeWidth:
 
 
 @pytest.fixture(scope="module")
-def fixture_path(loaded_tape: TapeWidth) -> Path:
-    return _fixture_for_tape(_TAPE_FIXTURES, loaded_tape)
+def label_fixture_path(loaded_tape: TapeWidth) -> Path:
+    return _fixture_for_tape(_LABEL_FIXTURES, loaded_tape)
 
 
 @pytest.fixture(scope="module")
-def gray_fixture_path(loaded_tape: TapeWidth) -> Path:
-    return _fixture_for_tape(_GRAY_FIXTURES, loaded_tape)
-
-
-@pytest.fixture(scope="module")
-def distort_fixture_path() -> Path:
-    if not DISTORT_FIXTURE.is_file():
-        pytest.skip("No committed distort fixture; run just gen-test-images")
-    return DISTORT_FIXTURE
+def wrong_tape_width(loaded_tape: TapeWidth) -> TapeWidth:
+    """Any tape width different from the loaded tape (for mismatch guard tests)."""
+    for width in TapeWidth:
+        if width != loaded_tape:
+            return width
+    pytest.skip("Only one tape width enum value available")

@@ -103,8 +103,6 @@ def print_image(
     printer: str | None = None,
     copies: int = 1,
     threshold: int = 128,
-    rotate: int = 0,
-    margin: int = 0,
     auto_cut: bool = True,
     half_cut: bool = False,
     scale: bool = False,
@@ -124,8 +122,6 @@ def print_image(
             image,
             tape_width,
             threshold=threshold,
-            rotate=rotate,
-            margin=margin,
             scale=scale,
         )
         job = encode_job(
@@ -148,8 +144,6 @@ def print_png(
     printer: str | None = None,
     copies: int = 1,
     threshold: int = 128,
-    rotate: int = 0,
-    margin: int = 0,
     auto_cut: bool = True,
     half_cut: bool = False,
     scale: bool = False,
@@ -162,8 +156,6 @@ def print_png(
             printer=printer,
             copies=copies,
             threshold=threshold,
-            rotate=rotate,
-            margin=margin,
             auto_cut=auto_cut,
             half_cut=half_cut,
             scale=scale,
@@ -177,8 +169,6 @@ def print_strip(
     printer: str | None = None,
     copies: int = 1,
     threshold: int = 128,
-    rotate: int = 0,
-    margin: int = 0,
     auto_cut: bool = True,
     half_cut: bool = False,
     scale: bool = False,
@@ -199,8 +189,6 @@ def print_strip(
 
         raster_kwargs = {
             "threshold": threshold,
-            "rotate": rotate,
-            "margin": margin,
             "scale": scale,
         }
         pages: list[list[bytes]] = []

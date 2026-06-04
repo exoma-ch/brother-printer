@@ -66,8 +66,6 @@ def print_text(
         printer=printer,
         copies=copies,
         threshold=threshold,
-        rotate=0,
-        margin=0,
         auto_cut=auto_cut,
         half_cut=half_cut,
         scale=False,

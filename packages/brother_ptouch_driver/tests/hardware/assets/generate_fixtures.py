@@ -1,114 +1,104 @@
 """Generate PNG fixtures sized for each TZe tape width.
 
-Each QR fixture is a square canvas with side ``TapeWidth.print_area_pins`` so
-``image_to_raster()`` uses an integer scale factor of 1 (QR-safe) and remains
-rotatable. A solid black bar along the top edge makes rotation visible on
-hardware (after ``rotate=90`` the bar appears on a side edge).
-
-Grayscale gradient fixtures exercise ``threshold`` in hardware tests. The shared
-``distort_100.png`` (100×100 px) requires a non-integer scale factor for every
-supported tape width so ``scale=True`` is meaningful.
+Each label fixture is a text-only canvas whose height equals
+``TapeWidth.print_area_pins`` and whose width is the minimum needed to hold the
+text. The text states the image height in millimeters and pixels and the
+rendered font size (e.g. ``H = 12 mm`` / ``H = 150 px`` / ``FS = 48``) so a
+human can verify the correct fixture printed on the loaded tape.
 
 Run via::
 
-    just gen-test-images
+    just gen-fixtures-driver
 """
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
-import qrcode
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from brother_ptouch_driver.protocol.enums import TapeWidth
 
 _ASSETS_DIR = Path(__file__).resolve().parent
 
-_DISTORT_SIZE = 100
-_DISTORT_FILENAME = "distort_100.png"
+# Padding around the text, relative to the label height.
+_PADDING_DIVISOR = 16
+_MIN_FONT_SIZE = 6
+_MAX_FONT_SIZE = 48
 
-_TAPE_FILENAMES: dict[TapeWidth, str] = {
-    TapeWidth.MM_3_5: "qr_3.5mm.png",
-    TapeWidth.MM_6: "qr_6mm.png",
-    TapeWidth.MM_9: "qr_9mm.png",
-    TapeWidth.MM_12: "qr_12mm.png",
-    TapeWidth.MM_18: "qr_18mm.png",
-    TapeWidth.MM_24: "qr_24mm.png",
-    TapeWidth.MM_36: "qr_36mm.png",
+_LABEL_FILENAMES: dict[TapeWidth, str] = {
+    TapeWidth.MM_3_5: "label_3.5mm.png",
+    TapeWidth.MM_6: "label_6mm.png",
+    TapeWidth.MM_9: "label_9mm.png",
+    TapeWidth.MM_12: "label_12mm.png",
+    TapeWidth.MM_18: "label_18mm.png",
+    TapeWidth.MM_24: "label_24mm.png",
+    TapeWidth.MM_36: "label_36mm.png",
 }
 
 
-def _bar_height(size: int) -> int:
-    return max(2, size // 12)
+def _to_strict_1bit(image: Image.Image) -> Image.Image:
+    """Convert any mode to strict 1-bit black/white (no dithering)."""
+    grayscale = image.convert("L")
+    return grayscale.point(lambda value: 255 if value >= 128 else 0, mode="1")
 
 
-def _render_qr(data: str, *, size: int) -> Image.Image:
-    """Render a square fixture with a top orientation bar and centered QR."""
-    bar = _bar_height(size)
-    qr_size = size - bar
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=1,
-        border=0,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    qr_image = qr.make_image(fill_color="black", back_color="white").convert("L")
-    qr_image = qr_image.resize((qr_size, qr_size), resample=Image.Resampling.NEAREST)
+def _label_text(width_mm: float, height_px: int, font_size: int) -> str:
+    """Label stating image height in mm and px plus the rendered font size."""
+    return f"H = {width_mm:g} mm\nH = {height_px} px\nFS = {font_size}"
 
-    canvas = Image.new("L", (size, size), 255)
+
+def _fit_font_size(draw: ImageDraw.ImageDraw, text: str, *, max_height: int) -> int:
+    """Largest default-font size whose multi-line block fits within max_height."""
+    upper = max(_MIN_FONT_SIZE, min(_MAX_FONT_SIZE, max_height))
+    for size in range(upper, _MIN_FONT_SIZE - 1, -1):
+        font = ImageFont.load_default(size=size)
+        bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
+        if bbox[3] - bbox[1] <= max_height:
+            return size
+    return _MIN_FONT_SIZE
+
+
+def _render_label(width_mm: float, *, height: int) -> Image.Image:
+    """Render a text-only label: image height in mm/px and font size, min width."""
+    padding = max(2, height // _PADDING_DIVISOR)
+    measure = ImageDraw.Draw(Image.new("L", (1, 1), 255))
+
+    # The block has a fixed line count, so its height does not depend on the
+    # font-size digits; fit on a sample, then show the resolved size.
+    sample = _label_text(width_mm, height, _MAX_FONT_SIZE)
+    font_size = _fit_font_size(measure, sample, max_height=height - 2 * padding)
+    text = _label_text(width_mm, height, font_size)
+    font = ImageFont.load_default(size=font_size)
+
+    bbox = measure.multiline_textbbox((0, 0), text, font=font, align="center")
+    left, top = math.floor(bbox[0]), math.floor(bbox[1])
+    text_w = math.ceil(bbox[2]) - left
+    text_h = math.ceil(bbox[3]) - top
+    width = text_w + 2 * padding
+
+    canvas = Image.new("L", (width, height), 255)
     draw = ImageDraw.Draw(canvas)
-    draw.rectangle((0, 0, size - 1, bar - 1), fill=0)
+    origin_x = (width - text_w) // 2 - left
+    origin_y = (height - text_h) // 2 - top
+    draw.multiline_text((origin_x, origin_y), text, fill=0, font=font, align="center")
 
-    offset_x = (size - qr_size) // 2
-    canvas.paste(qr_image, (offset_x, bar))
-    return canvas
-
-
-def _render_grayscale_gradient(*, size: int) -> Image.Image:
-    """Vertical grayscale gradient (L mode) for threshold hardware tests."""
-    canvas = Image.new("L", (size, size), 255)
-    draw = ImageDraw.Draw(canvas)
-    for y in range(size):
-        gray = int(255 * y / max(size - 1, 1))
-        draw.line([(0, y), (size - 1, y)], fill=gray)
-    return canvas
-
-
-def _render_distort_source(*, size: int = _DISTORT_SIZE) -> Image.Image:
-    """Square image whose height yields a non-integer scale to every tape width."""
-    canvas = Image.new("L", (size, size), 255)
-    draw = ImageDraw.Draw(canvas)
-    inset = max(4, size // 10)
-    draw.rectangle((inset, inset, size - inset - 1, size - inset - 1), fill=0)
-    return canvas
+    return _to_strict_1bit(canvas)
 
 
 def generate_all(output_dir: Path | None = None) -> list[Path]:
-    """Write QR, grayscale, and distort fixtures; return output paths."""
+    """Write label fixtures; return output paths."""
     target_dir = output_dir or _ASSETS_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    for tape_width, filename in _TAPE_FILENAMES.items():
+    for tape_width, filename in _LABEL_FILENAMES.items():
         size = tape_width.print_area_pins
-        data = f"brother-ptouch-driver hardware test {tape_width.mm:g}mm"
-        image = _render_qr(data, size=size)
+        image = _render_label(tape_width.mm, height=size)
         path = target_dir / filename
         image.save(path)
         written.append(path)
-
-        gray_name = filename.replace("qr_", "gray_")
-        gray_image = _render_grayscale_gradient(size=size)
-        gray_path = target_dir / gray_name
-        gray_image.save(gray_path)
-        written.append(gray_path)
-
-    distort_path = target_dir / _DISTORT_FILENAME
-    _render_distort_source().save(distort_path)
-    written.append(distort_path)
 
     return written
 

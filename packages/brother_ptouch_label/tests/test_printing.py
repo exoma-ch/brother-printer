@@ -118,8 +118,6 @@ def test_print_text_composes_render_and_raster(
         rendered,
         TapeWidth.MM_24,
         threshold=200,
-        rotate=0,
-        margin=0,
         scale=False,
     )
     mock_encode_job.assert_called_once_with(

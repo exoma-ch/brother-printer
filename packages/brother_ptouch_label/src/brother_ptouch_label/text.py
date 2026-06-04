@@ -10,7 +10,7 @@ from brother_ptouch_driver.imaging.errors import ImagingError
 from brother_ptouch_driver.protocol.enums import TapeWidth
 
 _DEFAULT_FILL_RATIO = 0.8
-_MIN_DEFAULT_FONT_SIZE = 50
+_MAX_DEFAULT_FONT_SIZE = 48
 _METRICS_SAMPLE = "Ay"
 _VALID_ROTATIONS = frozenset({0, 90})
 _VALID_ALIGNS = frozenset({"left", "center", "right"})
@@ -353,10 +353,7 @@ def render_text(
             rotate=rotate,
             samples=line_list,
         )
-        if rotate == 0:
-            size = max(fitted, _MIN_DEFAULT_FONT_SIZE)
-        else:
-            size = fitted
+        size = min(fitted, _MAX_DEFAULT_FONT_SIZE)
     else:
         if font_size < 1:
             msg = "font size must be at least 1"

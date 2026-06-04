@@ -34,8 +34,6 @@ def test_print_command_success(mock_print_image):
     _, kwargs = mock_print_image.call_args
     assert kwargs["copies"] == 1
     assert kwargs["threshold"] == 128
-    assert kwargs["rotate"] == 0
-    assert kwargs["margin"] == 0
     assert kwargs["auto_cut"] is True
     assert kwargs["half_cut"] is False
     assert kwargs["scale"] is False
@@ -170,10 +168,6 @@ def test_print_command_passes_options(mock_print_image):
                 "3",
                 "--threshold",
                 "200",
-                "--rotate",
-                "90",
-                "--margin",
-                "5",
                 "--printer",
                 "04f9:20c7#000123456789",
             ],
@@ -186,8 +180,6 @@ def test_print_command_passes_options(mock_print_image):
         "printer": "04f9:20c7#000123456789",
         "copies": 3,
         "threshold": 200,
-        "rotate": 90,
-        "margin": 5,
         "auto_cut": False,
         "half_cut": False,
         "scale": False,

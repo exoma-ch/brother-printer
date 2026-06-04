@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
@@ -11,6 +13,8 @@ from brother_ptouch_driver.protocol.constants import RASTER_LINE_BYTES
 from brother_ptouch_driver.protocol.encoder import encode_job, raster_line
 from brother_ptouch_driver.protocol.enums import TapeWidth
 from brother_ptouch_label.text import max_font_size, render_text
+
+_GOLDEN_DIR = Path(__file__).resolve().parent / "assets" / "golden"
 
 _ALL_TAPES = list(TapeWidth)
 _VALID_ROTATIONS = [0, 90]
@@ -251,23 +255,40 @@ def test_render_text_rotate_90_rejects_overflowing_font():
         render_text("WIDE", tape, rotate=90, font_size=200)
 
 
-def test_render_text_default_font_size_floors_small_tape():
-    """Default font size is at least 50px even when max_font_size is smaller."""
+def test_render_text_default_caps_font_size(golden_font: Path) -> None:
+    """Default font size is capped at 48px on wide tape (matches golden)."""
+    expected_path = _GOLDEN_DIR / "default_cap_36mm.png"
+    assert expected_path.is_file(), (
+        "missing golden default_cap_36mm.png; run: just gen-fixtures-labels"
+    )
+    expected = Image.open(expected_path).convert("L")
+    actual = render_text(
+        "Test",
+        TapeWidth.MM_36,
+        font_path=str(golden_font),
+    )
+    assert actual.size == expected.size
+    assert actual.tobytes() == expected.tobytes()
+
+
+def test_render_text_default_font_size_uses_fitted_on_small_tape():
+    """Default font size uses max_font_size when below the 48px cap."""
     tape = TapeWidth.MM_3_5
-    assert max_font_size(tape, 1) < 50
-    default = render_text("Hi", tape)
-    floored = render_text("Hi", tape, font_size=50)
-    assert default.tobytes() == floored.tobytes()
-
-
-def test_render_text_default_font_size_uses_max_on_large_tape():
-    """Default font size uses max_font_size when it exceeds the 50px floor."""
-    tape = TapeWidth.MM_36
     fitted = max_font_size(tape, 1)
-    assert fitted > 50
+    assert fitted < 48
     default = render_text("Hi", tape)
     explicit = render_text("Hi", tape, font_size=fitted)
     assert default.tobytes() == explicit.tobytes()
+
+
+def test_render_text_default_font_size_caps_large_tape():
+    """Default font size is capped at 48px when max_font_size exceeds it."""
+    tape = TapeWidth.MM_36
+    fitted = max_font_size(tape, 1)
+    assert fitted > 48
+    default = render_text("Hi", tape)
+    capped = render_text("Hi", tape, font_size=48)
+    assert default.tobytes() == capped.tobytes()
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\n"])
@@ -360,10 +381,10 @@ def test_render_text_default_font_renders_ink():
 
 
 def test_render_text_feeds_image_to_raster_without_scaling_error():
-    """Rendered text passes through image_to_raster at rotate=0 without distortion."""
+    """Rendered text passes through image_to_raster without distortion."""
     tape = TapeWidth.MM_24
     image = render_text("Raster\nPath", tape, rotate=90)
-    lines = image_to_raster(image, tape, rotate=0)
+    lines = image_to_raster(image, tape)
     assert len(lines) == image.width
     for line in lines:
         raster_line(line)
@@ -373,7 +394,7 @@ def test_render_text_feeds_image_to_raster_without_scaling_error():
 
 def _text_to_job(text: str, tape: TapeWidth, **kwargs: object) -> bytes:
     image = render_text(text, tape, **kwargs)
-    lines = image_to_raster(image, tape, rotate=0)
+    lines = image_to_raster(image, tape)
     for line in lines:
         raster_line(line)
     return encode_job(tape, lines)

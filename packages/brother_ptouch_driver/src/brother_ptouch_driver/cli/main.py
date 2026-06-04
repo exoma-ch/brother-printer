@@ -160,20 +160,6 @@ def status_cmd(printer: str | None) -> None:
     help="Monochrome threshold (0-255).",
 )
 @click.option(
-    "--rotate",
-    type=click.Choice(["0", "90", "180", "270"]),
-    default="0",
-    show_default=True,
-    help="Rotate label before printing (0/90/180/270 degrees).",
-)
-@click.option(
-    "--margin",
-    type=click.IntRange(min=0),
-    default=0,
-    show_default=True,
-    help="White margin in pixels on all sides.",
-)
-@click.option(
     "--scale",
     is_flag=True,
     default=False,
@@ -194,8 +180,6 @@ def print_cmd(
     strip: bool,
     copies: int,
     threshold: int,
-    rotate: str,
-    margin: int,
     scale: bool,
     printer: str | None,
 ) -> None:
@@ -218,8 +202,6 @@ def print_cmd(
     print_kwargs = {
         "printer": printer,
         "threshold": threshold,
-        "rotate": int(rotate),
-        "margin": margin,
         "auto_cut": auto_cut,
         "half_cut": half_cut,
         "scale": scale,

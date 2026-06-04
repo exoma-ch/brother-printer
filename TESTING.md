@@ -9,7 +9,10 @@ How to run the test suite, what it covers, and how hardware tests use tape.
 | `just test` | Full pytest suite; hardware tests are **skipped** (no env var). |
 | `just test-cov` | Same with coverage report (`term-missing`). |
 | `just test-hardware [args]` | Sets `BROTHER_PTOUCH_DRIVER_HARDWARE=1` and runs `pytest -m hardware`. |
-| `just gen-test-images` | Regenerates committed PNG fixtures under `packages/brother_ptouch_driver/tests/hardware/assets/`. |
+| `just test-connect [args]` | Non-destructive hardware checks (`test_connectivity.py` + `test_status.py`); requires the printer but consumes no tape. |
+| `just test-print [args]` | Tape-consuming print matrix (`test_print.py` only). |
+| `just test-all [args]` | Full pytest suite with hardware tests enabled. |
+| `just gen-fixtures-driver` | Regenerates committed PNG fixtures under `packages/brother_ptouch_driver/tests/hardware/assets/`. |
 
 Hardware tests are gated by the `hardware` marker (registered in `pyproject.toml`) and
 `pytest.mark.skipif` on `BROTHER_PTOUCH_DRIVER_HARDWARE=1`. They never run during CI or a
@@ -18,11 +21,11 @@ normal `just test` unless you opt in.
 **Hardware prerequisites:** PT-E920BT connected over USB, passthrough into the
 devcontainer, udev permissions — see [docs/install/linux-usb.md](docs/install/linux-usb.md).
 
-Before the first print run, regenerate fixtures if needed: `just gen-test-images`
-(all `qr_*`, `gray_*`, and `distort_100.png` must exist under `packages/brother_ptouch_driver/tests/hardware/assets/`).
+Before the first print run, regenerate fixtures if needed: `just gen-fixtures-driver`
+(all `label_*.png` files must exist under `packages/brother_ptouch_driver/tests/hardware/assets/`).
 
 **Timeouts:** print tests poll status with 15s per attempt and tolerate no-reply while
-the printer is busy. Idle wait allows up to **3 minutes** after long strips (P1).
+the printer is busy. Idle wait allows up to **3 minutes** after chained print jobs.
 
 ## Software suite layout
 
@@ -41,19 +44,20 @@ All opt-in hardware tests live under `packages/brother_ptouch_driver/tests/hardw
 
 | File | Role |
 | --- | --- |
-| `conftest.py` | Shared markers, fixtures (`printer`, `loaded_tape`, `fixture_path`, …), status helpers |
+| `conftest.py` | Shared markers, fixtures (`printer`, `loaded_tape`, `label_fixture_path`, …), status helpers |
 | `test_connectivity.py` | `discover()` and USB open/close |
 | `test_status.py` | Status round-trip, `query_status`, CLI `status` and `discover --status` |
-| `test_print.py` | Minimal-tape print matrix (P0–P4) |
+| `test_print.py` | Minimal-tape print matrix (H1–H2) |
 
-Fixtures: `packages/brother_ptouch_driver/tests/hardware/assets/` — QR, grayscale gradient, and `distort_100.png`;
-regenerate with `just gen-test-images`.
+Fixtures: `packages/brother_ptouch_driver/tests/hardware/assets/` — per-width `label_*.png` files;
+regenerate with `just gen-fixtures-driver`.
 
 ## Hardware print matrix
 
 Each full `just test-hardware` run on **one loaded tape** exercises the matrix below.
-Approximate tape use is listed per test; P1 packs many option checks onto one continuous
-strip with a single cut at the end (`cut_each` after the last page; no cuts between pages).
+Hardware prints verify only **physical actions** (marking, chained feed, cutter); imaging
+options (`threshold`, `scale`, text layout, copies, `print_png`, raw `encode_job`) are
+covered by software golden/imaging tests without tape.
 
 ### Non-printing tests (0 labels)
 
@@ -65,32 +69,27 @@ strip with a single cut at the end (`cut_each` after the last page; no cuts betw
 | `test_status.py::test_query_status_library_api` | `query_status()` library path |
 | `test_status.py::test_status_cli_command` | `brother-ptouch-driver status` |
 | `test_status.py::test_discover_status_cli_flag` | `brother-ptouch-driver discover --status` |
+| `test_print.py::test_print_wrong_width_raises_tape_mismatch` | `TapeMismatchError` when requested width ≠ loaded tape (zero tape) |
+| `test_print.py::test_print_wrong_height_raises_scaling_error` | `ImageScalingError` when height ≠ print area and `scale=False` (zero tape) |
 
 ### Printing tests
 
 | ID | Test | Labels / strip | Features exercised |
 | --- | --- | --- | --- |
-| **P0** | `test_print_raw_label` | ~1 short full-cut label | Raw `encode_job()`, `no_chain=True`, solid-black raster, default auto-cut |
-| **P1** | `test_print_visual_variations_strip` | 1 continuous strip, **one cut** at end | `image_to_raster` per variation + single `encode_strip_job(..., auto_cut=True)` (FF between pages, `cut_each` on last page); `rotate` 0/90/180/270, `threshold` (grayscale fixture), `scale=True` (distort fixture); no per-page eject feed |
-| **P2** | `test_print_half_cut_strip` | 1 half-cut strip (2 pages) | `print_strip`, `half_cut=True`, chained multi-page, auto-cut forced off; **laminated tape only** |
-| **P3** | `test_print_full_cut_strip_copies` | 2 full-cut labels | `print_strip(copies=2)`, `cut_each`, FF page chaining, full multi-page auto-cut |
-| **P4** | `test_print_text_feature_matrix` | 1 continuous strip, **one cut** at end | `render_text` + `print_strip`: auto-fit default font, multi-line + `align`, fixed `font_size`, `rotate=90` |
+| **H1** | `test_print_chained_strip` | 1 auto-cut strip (2 pages, **one cut** at end) | `print_strip`, chained multi-page feed (`print_page`/FF between pages, `eject` at end), auto-cut cutter |
+| **H2** | `test_print_half_cut_strip` | 1 half-cut strip (2 pages) | `print_strip`, `half_cut=True`, chained multi-page, auto-cut forced off; **laminated tape only** |
 
-**Rough total per run:** ~4–5 cut labels plus one half-cut strip (P2), while covering
-rotations, threshold, `scale`, and chained multi-page encoding without blank
-tape between P1 segments.
+**Rough total per run:** one short 2-page auto-cut strip (H1) plus one short half-cut strip
+(H2) when laminated tape is loaded; otherwise H1 only.
 
-**Head-to-cutter clearance:** the ~24 mm blank tape before the first printed segment on P1
-(and the feed before each cut) is inherent to the PT-E920BT mechanics, not per-segment
-waste from the test layout.
+**Head-to-cutter clearance:** the ~24 mm blank tape before the first printed segment
+(and the feed before each cut) is inherent to the PT-E920BT mechanics, not test-layout waste.
 
 ### Fixture assets
 
 | Asset | Purpose |
 | --- | --- |
-| `qr_{width}mm.png` | Square QR + top orientation bar; side = `TapeWidth.print_area_pins` |
-| `gray_{width}mm.png` | Vertical grayscale gradient for `threshold` |
-| `distort_100.png` | 100×100 px; non-integer scale to every tape width for `scale=True` |
+| `label_{width}mm.png` | Text-only label stating image height in mm and px plus rendered font size (e.g. `H = 12 mm` / `H = 150 px` / `FS = 48`); height = `TapeWidth.print_area_pins`, width = minimum needed for the text; strict 1-bit |
 
 Pin counts per width: [docs/vendor/tze-tape-widths.md](docs/vendor/tze-tape-widths.md).
 
@@ -98,11 +97,11 @@ Pin counts per width: [docs/vendor/tze-tape-widths.md](docs/vendor/tze-tape-widt
 
 - Hardware print tests use **only the loaded tape**: `status.media_width` is read at
   runtime; tests skip if no tape is reported.
-- The matching `qr_*` / `gray_*` fixture is selected from the loaded width; missing
-  files skip with a message to run `just gen-test-images`.
+- The matching `label_*` fixture is selected from the loaded width; missing files skip
+  with a message to run `just gen-fixtures-driver`.
 - `print_image` / `print_strip` call `_validate_status`; a width mismatch raises
   `TapeMismatchError`.
-- Half-cut (P2) requires **laminated** TZe/HGe; non-laminated tape skips P2.
+- Half-cut (H2) requires **laminated** TZe/HGe; non-laminated tape skips H2.
 - To cover another width, swap tape and re-run `just test-hardware`.
 
 ## Coverage gaps (hardware)
@@ -111,9 +110,7 @@ Not exercised on a physical printer today:
 
 | Gap | Notes |
 | --- | --- |
-| `print_image` / `print_image(copies>1)` | P1 uses `image_to_raster` + `encode_strip_job` directly; separate full jobs per copy not exercised on hardware |
-| `print_text` | P4 uses `brother_ptouch_label.render_text` + `print_strip`; `brother_ptouch_label.print_text` covered by software tests only |
-| `margin` | `apply_margin` covered by imaging unit tests only (padding breaks integer scale on tape-sized fixtures) |
+| `print_text` | `brother_ptouch_label.print_text` and `render_text` covered by software tests only |
 | `mirror` | Encoder supports it; not exposed on `print_image` / `print_strip` |
 | `no_chain=False` | Chained mode only via raw `encode_strip_job` |
 | `margin_dots`, `compression`, `cut_each_n` | Encoder-only parameters |

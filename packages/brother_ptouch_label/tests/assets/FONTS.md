@@ -23,7 +23,7 @@ uv run --with fonttools pyftsubset "$SRC" \
   --unicodes=20-7e \
   --output-file=packages/brother_ptouch_label/tests/assets/DejaVuSans.ttf \
   --no-hinting --desubroutinize
-just gen-text-images
+just gen-fixtures-labels
 ```
 
 ### License summary

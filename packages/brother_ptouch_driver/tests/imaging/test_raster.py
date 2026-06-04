@@ -7,8 +7,6 @@ from PIL import Image
 
 from brother_ptouch_driver.imaging.errors import ImageScalingError, ImagingError
 from brother_ptouch_driver.imaging.raster import (
-    apply_margin,
-    apply_rotation,
     image_to_raster,
     pack_raster_lines,
     resize_to_tape_width,
@@ -86,51 +84,6 @@ def test_to_monochrome_threshold_boundary():
 
     assert mono.getpixel((0, 0)) == 0
     assert mono.getpixel((1, 0)) == 255
-
-
-@pytest.mark.parametrize(
-    ("degrees", "expected_size"),
-    [(0, (3, 2)), (90, (2, 3)), (180, (3, 2)), (270, (2, 3))],
-)
-def test_apply_rotation(degrees: int, expected_size: tuple[int, int]):
-    """Rotation accepts 0/90/180/270 and preserves mode."""
-    image = Image.new("1", (3, 2), 255)
-    pixels = image.load()
-    assert pixels is not None
-    pixels[0, 0] = 0
-
-    rotated = apply_rotation(image, degrees)
-
-    assert rotated.mode == "1"
-    assert rotated.size == expected_size
-    assert 0 in rotated.get_flattened_data()
-
-
-def test_apply_rotation_rejects_invalid_angle():
-    """Invalid rotation angles raise ImagingError."""
-    image = Image.new("1", (1, 1), 255)
-
-    with pytest.raises(ImagingError, match="rotation"):
-        apply_rotation(image, 45)
-
-
-def test_apply_margin_adds_white_border():
-    """Margin pads with white on all sides."""
-    image = Image.new("1", (2, 2), 0)
-
-    padded = apply_margin(image, 1)
-
-    assert padded.size == (4, 4)
-    assert padded.getpixel((0, 0)) == 255
-    assert padded.getpixel((1, 1)) == 0
-
-
-def test_apply_margin_rejects_negative():
-    """Negative margin values are rejected."""
-    image = Image.new("1", (1, 1), 255)
-
-    with pytest.raises(ImagingError, match="margin"):
-        apply_margin(image, -1)
 
 
 def test_resize_to_tape_width_strict_rejects_wrong_height():
@@ -241,8 +194,6 @@ def test_image_to_raster_end_to_end():
         image,
         TapeWidth.MM_24,
         threshold=128,
-        rotate=0,
-        margin=0,
         scale=True,
     )
 
@@ -252,56 +203,3 @@ def test_image_to_raster_end_to_end():
 
     job = encode_job(TapeWidth.MM_24, lines)
     assert len(job) > len(lines) * RASTER_LINE_BYTES
-
-
-def test_image_to_raster_with_margin_and_rotation():
-    """Orchestrator applies margin and rotation before resize/pack."""
-    image = Image.new("L", (20, 40), 255)
-    pixels = image.load()
-    assert pixels is not None
-    pixels[0, 0] = 0
-
-    base_lines = image_to_raster(image, TapeWidth.MM_24, scale=True)
-    assert len(base_lines) == 160
-
-    rotated_lines = image_to_raster(image, TapeWidth.MM_24, rotate=90, scale=True)
-    assert len(rotated_lines) == 640
-
-    margined_lines = image_to_raster(image, TapeWidth.MM_24, margin=20, scale=True)
-    assert len(margined_lines) == 240
-    assert all(len(line) == RASTER_LINE_BYTES for line in margined_lines)
-
-
-def _orientation_marker_image(tape: TapeWidth) -> Image.Image:
-    """Square image with a black bar on the top edge (rotation marker)."""
-    size = tape.print_area_pins
-    bar_height = max(2, size // 12)
-    image = Image.new("L", (size, size), 255)
-    pixels = image.load()
-    assert pixels is not None
-    for y in range(bar_height):
-        for x in range(size):
-            pixels[x, y] = 0
-    return image
-
-
-def test_image_to_raster_rotation_changes_raster_bytes():
-    """rotate=90 produces different raster output than rotate=0 for asymmetric images."""
-    image = _orientation_marker_image(TapeWidth.MM_9)
-
-    lines_0 = image_to_raster(image, TapeWidth.MM_9, rotate=0)
-    lines_90 = image_to_raster(image, TapeWidth.MM_9, rotate=90)
-
-    assert lines_0 != lines_90
-
-
-def test_apply_rotation_four_quarter_turns_restores_image():
-    """Four 90-degree rotations return the monochrome image to its original pixels."""
-    image = _orientation_marker_image(TapeWidth.MM_9)
-    mono = to_monochrome(image)
-
-    rotated = mono
-    for _ in range(4):
-        rotated = apply_rotation(rotated, 90)
-
-    assert mono.tobytes() == rotated.tobytes()

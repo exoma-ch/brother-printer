@@ -10,11 +10,16 @@ markers = [
     "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PTOUCH_DRIVER_HARDWARE=1)",
 ]
 
+[tool.coverage.run]
+source = [
+    "packages/brother_ptouch_driver/src",
+    "packages/brother_ptouch_label/src",
+]
+
 [dependency-groups]
 dev = [
     "hatchling>=1.25",
     "pytest>=8.0",
     "pytest-cov>=4.0",
-    "qrcode>=8.0",
     "rich>=13.0.0",
 ]
