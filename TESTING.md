@@ -9,6 +9,9 @@ How to run the test suite, what it covers, and how hardware tests use tape.
 | `just test` | Full pytest suite; hardware tests are **skipped** (no env var). |
 | `just test-cov` | Same with coverage report (`term-missing`). |
 | `just test-hardware [args]` | Sets `BROTHER_PTOUCH_DRIVER_HARDWARE=1` and runs `pytest -m hardware`. |
+| `just test-connect [args]` | Non-destructive hardware checks (`test_connectivity.py` + `test_status.py`); requires the printer but consumes no tape. |
+| `just test-print [args]` | Tape-consuming print matrix (`test_print.py` only). |
+| `just test-all [args]` | Full pytest suite with hardware tests enabled. |
 | `just gen-fixtures-driver` | Regenerates committed PNG fixtures under `packages/brother_ptouch_driver/tests/hardware/assets/`. |
 
 Hardware tests are gated by the `hardware` marker (registered in `pyproject.toml`) and

@@ -55,6 +55,24 @@ test-cov *args:
 test-hardware *args:
     BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware {{ args }}
 
+# Run non-destructive hardware checks: connectivity + status, consumes no tape (issue #27)
+[group('test')]
+test-connect *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware \
+      packages/brother_ptouch_driver/tests/hardware/test_connectivity.py \
+      packages/brother_ptouch_driver/tests/hardware/test_status.py {{ args }}
+
+# Run the tape-consuming hardware print matrix (issue #27)
+[group('test')]
+test-print *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware \
+      packages/brother_ptouch_driver/tests/hardware/test_print.py {{ args }}
+
+# Run the entire suite including opt-in hardware tests (issue #27)
+[group('test')]
+test-all *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest {{ args }}
+
 # Regenerate label PNG fixtures for hardware print tests (issue #7, #27)
 [group('test')]
 gen-fixtures-driver:

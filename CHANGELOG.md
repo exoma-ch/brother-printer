@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bundled DejaVuSans.ttf and committed PNG goldens for deterministic `render_text` regression tests
   - `just test-core`, `just test-text`, and `just gen-fixtures-labels` for scoped test runs and fixture regeneration
 
+- **Scoped hardware test recipes** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
+  - `just test-connect` (connectivity + status, no tape), `just test-print` (print matrix), and `just test-all` (full suite incl. hardware)
+
 ### Changed
 
 - **Hardware print test fixtures and coverage** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
