@@ -237,6 +237,38 @@ def test_render_text_rejects_empty_text(text):
         render_text(text, TapeWidth.MM_24)
 
 
+def test_render_text_rejects_invalid_align():
+    """Invalid align raises ImagingError."""
+    with pytest.raises(ImagingError, match="align"):
+        render_text("Hi", TapeWidth.MM_24, align="justify")
+
+
+@pytest.mark.parametrize("rotate", [45, 91, 360])
+def test_render_text_rejects_invalid_rotate(rotate):
+    """Invalid rotation raises ImagingError."""
+    with pytest.raises(ImagingError, match="rotation"):
+        render_text("Hi", TapeWidth.MM_24, rotate=rotate)
+
+
+def test_render_text_rejects_negative_margin():
+    """Negative margin raises ImagingError."""
+    with pytest.raises(ImagingError, match="margin"):
+        render_text("Hi", TapeWidth.MM_24, margin=-1)
+
+
+@pytest.mark.parametrize("font_size", [0, -1])
+def test_render_text_rejects_invalid_font_size(font_size):
+    """font_size below 1 raises ValueError."""
+    with pytest.raises(ValueError, match="font size"):
+        render_text("Hi", TapeWidth.MM_24, font_size=font_size)
+
+
+def test_render_text_rejects_missing_font_path():
+    """Missing font_path raises ImagingError."""
+    with pytest.raises(ImagingError, match="failed to load font"):
+        render_text("Hi", TapeWidth.MM_24, font_path="/nonexistent/font.ttf")
+
+
 def test_render_text_default_font_renders_ink():
     """Default scalable font renders visible text without a font path."""
     image = render_text("Default", TapeWidth.MM_24)
