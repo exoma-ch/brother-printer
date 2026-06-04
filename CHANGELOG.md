@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Hardware print test fixtures and coverage** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
+  - Per-width `label_{width}mm.png` text-only fixtures stating the image height in mm and pixels and the rendered font size; minimum-width (non-square) canvas, height = tape print area; replaces `qr_*` assets
+  - Zero-tape negative-path tests assert `TapeMismatchError` and `ImageScalingError` guards
+  - Hardware matrix adds `print_png()` and `print_image(copies=2)` on the loaded tape
+
 - **Package and CLI rename to brother-ptouch-***
   - Workspace packages: `brother-ptouch-driver` (`import brother_ptouch_driver`) and `brother-ptouch-label` (`import brother_ptouch_label`)
   - Console scripts: `brother-ptouch-driver`, `brother-ptouch-label` (replaces `brother-printer`, `brother-label-text`)
