@@ -360,10 +360,10 @@ def test_render_text_default_font_renders_ink():
 
 
 def test_render_text_feeds_image_to_raster_without_scaling_error():
-    """Rendered text passes through image_to_raster at rotate=0 without distortion."""
+    """Rendered text passes through image_to_raster without distortion."""
     tape = TapeWidth.MM_24
     image = render_text("Raster\nPath", tape, rotate=90)
-    lines = image_to_raster(image, tape, rotate=0)
+    lines = image_to_raster(image, tape)
     assert len(lines) == image.width
     for line in lines:
         raster_line(line)
@@ -373,7 +373,7 @@ def test_render_text_feeds_image_to_raster_without_scaling_error():
 
 def _text_to_job(text: str, tape: TapeWidth, **kwargs: object) -> bytes:
     image = render_text(text, tape, **kwargs)
-    lines = image_to_raster(image, tape, rotate=0)
+    lines = image_to_raster(image, tape)
     for line in lines:
         raster_line(line)
     return encode_job(tape, lines)

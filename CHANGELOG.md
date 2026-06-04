@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Driver imaging rotate and margin** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - Removed `--rotate`/`--margin` from `brother-ptouch-driver` CLI and `rotate`/`margin` from `print_image`, `print_png`, `print_strip`, and `image_to_raster`
+  - Removed `apply_rotation` and `apply_margin` from the imaging pipeline; rotation and margins belong in `brother-ptouch-label`
+
 - **Text printing from core package** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
   - `render_text`, `max_font_size`, and `print_text` no longer exported from `brother_printer`
   - `brother-printer print --text` removed; use `brother-label-text` instead

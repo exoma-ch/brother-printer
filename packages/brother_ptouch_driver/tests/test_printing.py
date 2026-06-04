@@ -128,8 +128,6 @@ def test_print_strip_writes_one_job_for_multiple_images(
         half_cut=True,
         auto_cut=True,
         threshold=100,
-        rotate=90,
-        margin=4,
     )
 
     assert mock_image_to_raster.call_count == 2
@@ -210,8 +208,6 @@ def test_print_image_writes_job_for_each_copy(
         TapeWidth.MM_24,
         copies=2,
         threshold=100,
-        rotate=90,
-        margin=4,
         auto_cut=False,
     )
 
@@ -222,8 +218,6 @@ def test_print_image_writes_job_for_each_copy(
         image,
         TapeWidth.MM_24,
         threshold=100,
-        rotate=90,
-        margin=4,
         scale=False,
     )
     mock_encode_job.assert_called_once_with(

@@ -11,8 +11,6 @@ from brother_ptouch_driver.imaging.errors import ImageScalingError, ImagingError
 from brother_ptouch_driver.protocol.constants import HEAD_PINS, RASTER_LINE_BYTES
 from brother_ptouch_driver.protocol.enums import TapeWidth
 
-_VALID_ROTATIONS = frozenset({0, 90, 180, 270})
-
 
 def to_monochrome(image: Image.Image, threshold: int = 128) -> Image.Image:
     """Convert any PIL mode to strict 1-bit monochrome (no dithering)."""
@@ -30,30 +28,6 @@ def to_monochrome(image: Image.Image, threshold: int = 128) -> Image.Image:
         grayscale = image.convert("L")
 
     return grayscale.point(lambda value: 255 if value >= threshold else 0, mode="1")
-
-
-def apply_rotation(image: Image.Image, degrees: int) -> Image.Image:
-    """Rotate image by 0, 90, 180, or 270 degrees."""
-    if degrees not in _VALID_ROTATIONS:
-        msg = f"rotation must be one of {sorted(_VALID_ROTATIONS)}, got {degrees}"
-        raise ImagingError(msg)
-    if degrees == 0:
-        return image.copy()
-    return image.rotate(degrees, expand=True, resample=Image.Resampling.NEAREST)
-
-
-def apply_margin(image: Image.Image, margin_px: int) -> Image.Image:
-    """Pad image with white margin on all sides."""
-    if margin_px < 0:
-        msg = "margin must be non-negative"
-        raise ImagingError(msg)
-    if margin_px == 0:
-        return image.copy()
-
-    width, height = image.size
-    padded = Image.new(image.mode, (width + 2 * margin_px, height + 2 * margin_px), 255)
-    padded.paste(image, (margin_px, margin_px))
-    return padded
 
 
 def resize_to_tape_width(
@@ -153,13 +127,9 @@ def image_to_raster(
     tape_width: TapeWidth,
     *,
     threshold: int = 128,
-    rotate: int = 0,
-    margin: int = 0,
     scale: bool = False,
 ) -> list[bytes]:
     """Convert a PIL image to 70-byte raster lines for the protocol encoder."""
     mono = to_monochrome(image, threshold=threshold)
-    mono = apply_rotation(mono, rotate)
-    mono = apply_margin(mono, margin)
     mono = resize_to_tape_width(mono, tape_width, scale=scale)
     return pack_raster_lines(mono, tape_width)
