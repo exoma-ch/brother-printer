@@ -271,23 +271,24 @@ def test_render_text_default_caps_font_size(golden_font: Path) -> None:
     assert actual.tobytes() == expected.tobytes()
 
 
-def test_render_text_default_font_size_floors_small_tape():
-    """Default font size is at least 50px even when max_font_size is smaller."""
+def test_render_text_default_font_size_uses_fitted_on_small_tape():
+    """Default font size uses max_font_size when below the 48px cap."""
     tape = TapeWidth.MM_3_5
-    assert max_font_size(tape, 1) < 50
-    default = render_text("Hi", tape)
-    floored = render_text("Hi", tape, font_size=50)
-    assert default.tobytes() == floored.tobytes()
-
-
-def test_render_text_default_font_size_uses_max_on_large_tape():
-    """Default font size uses max_font_size when it exceeds the 50px floor."""
-    tape = TapeWidth.MM_36
     fitted = max_font_size(tape, 1)
-    assert fitted > 50
+    assert fitted < 48
     default = render_text("Hi", tape)
     explicit = render_text("Hi", tape, font_size=fitted)
     assert default.tobytes() == explicit.tobytes()
+
+
+def test_render_text_default_font_size_caps_large_tape():
+    """Default font size is capped at 48px when max_font_size exceeds it."""
+    tape = TapeWidth.MM_36
+    fitted = max_font_size(tape, 1)
+    assert fitted > 48
+    default = render_text("Hi", tape)
+    capped = render_text("Hi", tape, font_size=48)
+    assert default.tobytes() == capped.tobytes()
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\n"])

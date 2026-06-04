@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ADR-0003 documents the split, strict image-height contract, and `--scale` behavior
 
 - **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
-  - Multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
+  - Multi-line labels with auto-fit font size (capped at 48px), alignment, spacing, and baked-in rotation
   - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
   - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
 

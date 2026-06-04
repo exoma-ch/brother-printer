@@ -63,7 +63,7 @@ def _resolve_margins(
     "--font-size",
     type=click.IntRange(min=1),
     default=None,
-    help="Font size in pixels (default: auto-fit to tape height).",
+    help="Font size in pixels (default: largest fitting size, capped at 48px).",
 )
 @click.option(
     "--align",
@@ -150,7 +150,13 @@ def main(
     output: Path | None,
     printer: str | None,
 ) -> None:
-    """Print a text label on a connected PT-E920BT."""
+    """Print a text label on a connected PT-E920BT.
+
+    TEXT may span multiple lines. Pass a literal "\\n" sequence to insert a
+    line break (for example "Line 1\\nLine 2"), or supply an actual newline
+    via your shell (such as a quoted argument that spans several lines). Use
+    --align and --line-spacing to control how the lines are laid out.
+    """
     label_text = text.replace("\\n", "\n")
     margin_kwargs = _resolve_margins(
         margin,
