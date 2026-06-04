@@ -8,18 +8,18 @@ How to run the test suite, what it covers, and how hardware tests use tape.
 | --- | --- |
 | `just test` | Full pytest suite; hardware tests are **skipped** (no env var). |
 | `just test-cov` | Same with coverage report (`term-missing`). |
-| `just test-hardware [args]` | Sets `BROTHER_PRINTER_HARDWARE=1` and runs `pytest -m hardware`. |
-| `just gen-test-images` | Regenerates committed PNG fixtures under `packages/brother_printer/tests/hardware/assets/`. |
+| `just test-hardware [args]` | Sets `BROTHER_PTOUCH_DRIVER_HARDWARE=1` and runs `pytest -m hardware`. |
+| `just gen-test-images` | Regenerates committed PNG fixtures under `packages/brother_ptouch_driver/tests/hardware/assets/`. |
 
 Hardware tests are gated by the `hardware` marker (registered in `pyproject.toml`) and
-`pytest.mark.skipif` on `BROTHER_PRINTER_HARDWARE=1`. They never run during CI or a
+`pytest.mark.skipif` on `BROTHER_PTOUCH_DRIVER_HARDWARE=1`. They never run during CI or a
 normal `just test` unless you opt in.
 
 **Hardware prerequisites:** PT-E920BT connected over USB, passthrough into the
 devcontainer, udev permissions — see [docs/install/linux-usb.md](docs/install/linux-usb.md).
 
 Before the first print run, regenerate fixtures if needed: `just gen-test-images`
-(all `qr_*`, `gray_*`, and `distort_100.png` must exist under `packages/brother_printer/tests/hardware/assets/`).
+(all `qr_*`, `gray_*`, and `distort_100.png` must exist under `packages/brother_ptouch_driver/tests/hardware/assets/`).
 
 **Timeouts:** print tests poll status with 15s per attempt and tolerate no-reply while
 the printer is busy. Idle wait allows up to **3 minutes** after long strips (P1).
@@ -28,16 +28,16 @@ the printer is busy. Idle wait allows up to **3 minutes** after long strips (P1)
 
 | Directory | Coverage |
 | --- | --- |
-| `packages/brother_printer/tests/protocol/` | Encoder/decoder golden files, constants, enums |
-| `packages/brother_printer/tests/transport/` | USB transport (pyusb mocked), discover, errors |
-| `packages/brother_printer/tests/imaging/` | `image_to_raster` pipeline (strict sizing, `--scale`) |
-| `packages/brother_printer/tests/` | Core library orchestration (`print_image`, `print_png`, `print_strip`, `query_status`) |
-| `packages/brother_printer/tests/cli/` | Core CLI commands, CSV jobs, import boundaries (ADR-0002) |
-| `packages/brother_printer_text/tests/` | Text rendering (`render_text`, `max_font_size`, `print_text`, `brother-label-text` CLI) |
+| `packages/brother_ptouch_driver/tests/protocol/` | Encoder/decoder golden files, constants, enums |
+| `packages/brother_ptouch_driver/tests/transport/` | USB transport (pyusb mocked), discover, errors |
+| `packages/brother_ptouch_driver/tests/imaging/` | `image_to_raster` pipeline (strict sizing, `--scale`) |
+| `packages/brother_ptouch_driver/tests/` | Driver library orchestration (`print_image`, `print_png`, `print_strip`, `query_status`) |
+| `packages/brother_ptouch_driver/tests/cli/` | Driver CLI commands, CSV jobs, import boundaries (ADR-0002) |
+| `packages/brother_ptouch_label/tests/` | Text rendering (`render_text`, `max_font_size`, `print_text`, `brother-ptouch-label` CLI) |
 
 ## Hardware suite layout
 
-All opt-in hardware tests live under `packages/brother_printer/tests/hardware/`:
+All opt-in hardware tests live under `packages/brother_ptouch_driver/tests/hardware/`:
 
 | File | Role |
 | --- | --- |
@@ -46,7 +46,7 @@ All opt-in hardware tests live under `packages/brother_printer/tests/hardware/`:
 | `test_status.py` | Status round-trip, `query_status`, CLI `status` and `discover --status` |
 | `test_print.py` | Minimal-tape print matrix (P0–P4) |
 
-Fixtures: `packages/brother_printer/tests/hardware/assets/` — QR, grayscale gradient, and `distort_100.png`;
+Fixtures: `packages/brother_ptouch_driver/tests/hardware/assets/` — QR, grayscale gradient, and `distort_100.png`;
 regenerate with `just gen-test-images`.
 
 ## Hardware print matrix
@@ -63,8 +63,8 @@ strip with a single cut at the end (`cut_each` after the last page; no cuts betw
 | `test_connectivity.py::test_open_close_round_trip` | Interface claim/release |
 | `test_status.py::test_status_request_round_trip` | Raw `status_request()` 32-byte reply |
 | `test_status.py::test_query_status_library_api` | `query_status()` library path |
-| `test_status.py::test_status_cli_command` | `brother-printer status` |
-| `test_status.py::test_discover_status_cli_flag` | `brother-printer discover --status` |
+| `test_status.py::test_status_cli_command` | `brother-ptouch-driver status` |
+| `test_status.py::test_discover_status_cli_flag` | `brother-ptouch-driver discover --status` |
 
 ### Printing tests
 
@@ -112,7 +112,7 @@ Not exercised on a physical printer today:
 | Gap | Notes |
 | --- | --- |
 | `print_image` / `print_image(copies>1)` | P1 uses `image_to_raster` + `encode_strip_job` directly; separate full jobs per copy not exercised on hardware |
-| `print_text` | P4 uses `brother_printer_text.render_text` + `print_strip`; `brother_printer_text.print_text` covered by software tests only |
+| `print_text` | P4 uses `brother_ptouch_label.render_text` + `print_strip`; `brother_ptouch_label.print_text` covered by software tests only |
 | `margin` | `apply_margin` covered by imaging unit tests only (padding breaks integer scale on tape-sized fixtures) |
 | `mirror` | Encoder supports it; not exposed on `print_image` / `print_strip` |
 | `no_chain=False` | Chained mode only via raw `encode_strip_job` |

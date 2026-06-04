@@ -49,7 +49,7 @@ user-pain themes — but do not fork them or depend on them at runtime.
 
 Rationale:
 
-- The repository is already a Python project (`pyproject.toml`, `src/brother_printer/`).
+- The repository is already a Python project (`pyproject.toml`, `packages/brother_ptouch_driver/`).
 - No existing project supports PT-E920BT; wrapping would still require full protocol work
   plus an external binary dependency.
 - The closest match (`ptouch-print`) is C and GPL-3.0; forking would split the ecosystem

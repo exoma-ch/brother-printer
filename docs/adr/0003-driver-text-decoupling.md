@@ -2,12 +2,12 @@
 
 ## Status
 
-Accepted — 2026-06-04 (layout symmetric under `packages/` — 2026-06-04)
+Accepted — 2026-06-04 (layout symmetric under `packages/` — 2026-06-04; package rename — 2026-06-04)
 
 ## Context
 
 [ADR-0002](0002-architecture.md) defined a five-layer monolith with imaging (raster + text) inside
-`brother_printer`. Text rendering (`render_text`, `print_text`) and the CLI `--text` path added
+`brother_ptouch_driver`. Text rendering (`render_text`, `print_text`) and the CLI `--text` path added
 coupling that a future web service does not need. The driver contract should accept ready-to-print
 images; text-to-label is a separate concern.
 
@@ -17,8 +17,8 @@ Split the repository into a **uv workspace** with two packages under `packages/`
 
 | Package | Path | Responsibility |
 | --- | --- | --- |
-| `brother_printer` | `packages/brother_printer/` | USB transport, P-touch protocol, image-to-raster, print orchestration, `brother-printer` CLI |
-| `brother_printer_text` | `packages/brother_printer_text/` | Text rendering, `print_text`, `brother-label-text` CLI |
+| `brother-ptouch-driver` | `packages/brother_ptouch_driver/` | USB transport, P-touch protocol, image-to-raster, print orchestration, `brother-ptouch-driver` CLI |
+| `brother-ptouch-label` | `packages/brother_ptouch_label/` | Text rendering, `print_text`, `brother-ptouch-label` CLI |
 
 The repo root holds only the virtual workspace `pyproject.toml` (dev dependency group, pytest
 config). CI and the devcontainer use `just sync` (`uv sync --all-packages`) — no lifecycle script
@@ -29,20 +29,20 @@ hardcodes package paths.
 ```
 pyproject.toml                 # virtual root: [tool.uv.workspace], dev deps, pytest
 packages/
-  brother_printer/
+  brother_ptouch_driver/
     pyproject.toml
-    src/brother_printer/
+    src/brother_ptouch_driver/
     tests/
-  brother_printer_text/
+  brother_ptouch_label/
     pyproject.toml
-    src/brother_printer_text/
+    src/brother_ptouch_label/
     tests/
 ```
 
 ### Driver input contract
 
 - **Library:** `print_image(PIL.Image)` and `print_png(bytes)` (PNG decode at the edge).
-- **CLI:** image paths or CSV; no `--text` on `brother-printer print`.
+- **CLI:** image paths or CSV; no `--text` on `brother-ptouch-driver print`.
 
 ### Image height / scaling
 
@@ -54,27 +54,27 @@ unconstrained (feed direction).
 | Default (`scale=False`) | Image height must equal print area; otherwise `ImageScalingError`. |
 | `scale=True` / `--scale` | Integer up/downscale via nearest-neighbor; non-integer factors resample (may distort QR). |
 
-See `brother_printer.imaging.raster.resize_to_tape_width` and
+See `brother_ptouch_driver.imaging.raster.resize_to_tape_width` and
 [docs/vendor/tze-tape-widths.md](../vendor/tze-tape-widths.md).
 
 ### Dependency direction
 
 ```mermaid
 flowchart TB
-    TextCLI["brother-label-text CLI"] --> TextPkg["brother_printer_text"]
-    CoreCLI["brother-printer CLI"] --> CorePkg["brother_printer"]
-    TextPkg --> CorePkg
-    CorePkg --> Imaging["imaging/raster"]
-    CorePkg --> Protocol["protocol"]
-    CorePkg --> Transport["transport"]
+    TextCLI["brother-ptouch-label CLI"] --> TextPkg["brother_ptouch_label"]
+    DriverCLI["brother-ptouch-driver CLI"] --> DriverPkg["brother_ptouch_driver"]
+    TextPkg --> DriverPkg
+    DriverPkg --> Imaging["imaging/raster"]
+    DriverPkg --> Protocol["protocol"]
+    DriverPkg --> Transport["transport"]
 ```
 
-- `brother_printer_text` depends on `brother_printer` only (workspace source).
-- Core public API no longer exports `render_text`, `max_font_size`, or `print_text`.
+- `brother-ptouch-label` depends on `brother-ptouch-driver` only (workspace source).
+- Driver public API no longer exports `render_text`, `max_font_size`, or `print_text`.
 
 ### Web service (deferred)
 
-A future `brother_printer_web` package under `packages/` will depend on `brother_printer` only,
+A future `brother_ptouch_web` package under `packages/` will depend on `brother-ptouch-driver` only,
 not on text or CLI.
 
 ## Consequences
@@ -88,10 +88,11 @@ not on text or CLI.
 
 ### Breaking
 
-- `print_text`, `render_text`, `max_font_size` removed from `brother_printer` top-level API.
-- `brother-printer print --text` removed; use `brother-label-text` instead.
+- `print_text`, `render_text`, `max_font_size` removed from `brother_ptouch_driver` top-level API.
+- `brother-ptouch-driver print --text` removed; use `brother-ptouch-label` instead.
 - `allow_distortion` renamed to `scale`; default no longer auto-scales integer multiples.
-- Core source and tests moved from repo-root `src/` and `tests/` to `packages/brother_printer/`.
+- Core source and tests moved from repo-root `src/` and `tests/` to `packages/brother_ptouch_driver/`.
+- Distribution names `brother_printer` / `brother_printer_text` and CLIs `brother-printer` / `brother-label-text` renamed to `brother-ptouch-driver` / `brother-ptouch-label`.
 
 ## Alternatives considered
 
@@ -103,9 +104,9 @@ not on text or CLI.
 
 **Rejected.** Still couples public API and install graph; workspace split is clearer.
 
-### Core package at repo root (`src/brother_printer/`)
+### Core package at repo root (`src/brother_ptouch_driver/`)
 
-**Rejected after initial split.** Asymmetric with `packages/brother_printer_text/`; both packages
+**Rejected after initial split.** Asymmetric with `packages/brother_ptouch_label/`; both packages
 now live under `packages/` for clarity.
 
 ## References

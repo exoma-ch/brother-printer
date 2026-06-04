@@ -12,8 +12,8 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "brother-printer",
-    "brother-printer-text",
+    "brother-ptouch-driver",
+    "brother-ptouch-label",
 ]
 
 [manifest.dependency-groups]
@@ -26,9 +26,9 @@ dev = [
 ]
 
 [[package]]
-name = "brother-printer"
+name = "brother-ptouch-driver"
 version = "0.1.0"
-source = { editable = "packages/brother_printer" }
+source = { editable = "packages/brother_ptouch_driver" }
 dependencies = [
     { name = "click" },
     { name = "pillow" },
@@ -43,18 +43,18 @@ requires-dist = [
 ]
 
 [[package]]
-name = "brother-printer-text"
+name = "brother-ptouch-label"
 version = "0.1.0"
-source = { editable = "packages/brother_printer_text" }
+source = { editable = "packages/brother_ptouch_label" }
 dependencies = [
-    { name = "brother-printer" },
+    { name = "brother-ptouch-driver" },
     { name = "click" },
     { name = "pillow" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "brother-printer", editable = "packages/brother_printer" },
+    { name = "brother-ptouch-driver", editable = "packages/brother_ptouch_driver" },
     { name = "click", specifier = ">=8.1" },
     { name = "pillow", specifier = ">=10.1" },
 ]

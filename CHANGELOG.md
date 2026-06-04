@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Package and CLI rename to brother-ptouch-***
+  - Workspace packages: `brother-ptouch-driver` (`import brother_ptouch_driver`) and `brother-ptouch-label` (`import brother_ptouch_label`)
+  - Console scripts: `brother-ptouch-driver`, `brother-ptouch-label` (replaces `brother-printer`, `brother-label-text`)
+  - Hardware tests opt-in via `BROTHER_PTOUCH_DRIVER_HARDWARE=1` (replaces `BROTHER_PRINTER_HARDWARE`)
+  - Just recipes: `just test-driver`, `just test-label` (replaces `just test-core`, `just test-text`)
+
 - **brother-label-text CLI and rotation behavior**
   - Text is a positional argument (`--text` removed); `--tape` optional (auto-detect from printer status)
   - `--rotate` toggles 90° across-tape layout; 180°/270° rotation removed

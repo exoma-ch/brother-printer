@@ -15,7 +15,7 @@ sudo apt install libusb-1.0-0
 sudo dnf install libusb
 ```
 
-Install the Python package (includes the `brother-printer` CLI):
+Install the Python package (includes the `brother-ptouch-driver` CLI):
 
 ```bash
 uv sync --all-packages
@@ -25,7 +25,7 @@ uv sync --all-packages
 Run the CLI via `uv run` (or activate the project venv first):
 
 ```bash
-uv run brother-printer --help
+uv run brother-ptouch-driver --help
 ```
 
 ## udev rules (non-root access)
@@ -49,7 +49,7 @@ sudo usermod -aG plugdev "$USER"
 Connect the PT-E920BT over USB, then:
 
 ```bash
-uv run brother-printer discover
+uv run brother-ptouch-driver discover
 ```
 
 Expected output (one line per printer):
@@ -130,7 +130,7 @@ uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
 test -d /dev/bus/usb && ls /dev/bus/usb
 
 # Library discovery
-uv run brother-printer discover
+uv run brother-ptouch-driver discover
 
 # Opt-in hardware tests (requires a connected printer)
 just test-hardware
@@ -155,7 +155,7 @@ likely `nobody:nogroup` with mode `0664` (container processes only get
 
 ### Permission denied
 
-If `uv run brother-printer discover` or transport open fails with a permission error,
+If `uv run brother-ptouch-driver discover` or transport open fails with a permission error,
 install the udev rule above and confirm group membership. The CLI error message
 includes a pointer to this document.
 

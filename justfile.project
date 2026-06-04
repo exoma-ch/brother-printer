@@ -53,27 +53,27 @@ test-cov *args:
 # Run opt-in hardware tests against a connected PT-E920BT (issue #4)
 [group('test')]
 test-hardware *args:
-    BROTHER_PRINTER_HARDWARE=1 uv run pytest -m hardware {{ args }}
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware {{ args }}
 
 # Regenerate QR PNG fixtures for hardware print tests (issue #7)
 [group('test')]
 gen-test-images:
-    uv run python packages/brother_printer/tests/hardware/assets/generate_fixtures.py
+    uv run python packages/brother_ptouch_driver/tests/hardware/assets/generate_fixtures.py
 
-# Run brother_printer (core) package tests
+# Run brother-ptouch-driver package tests
 [group('test')]
-test-core *args:
-    uv run pytest packages/brother_printer/tests {{ args }}
+test-driver *args:
+    uv run pytest packages/brother_ptouch_driver/tests {{ args }}
 
-# Run brother_printer_text package tests
+# Run brother-ptouch-label package tests
 [group('test')]
-test-text *args:
-    uv run pytest packages/brother_printer_text/tests {{ args }}
+test-label *args:
+    uv run pytest packages/brother_ptouch_label/tests {{ args }}
 
-# Regenerate golden render fixtures for the text package (issue #9)
+# Regenerate golden render fixtures for the label package (issue #9)
 [group('test')]
 gen-text-images:
-    uv run python packages/brother_printer_text/tests/assets/generate_text_fixtures.py
+    uv run python packages/brother_ptouch_label/tests/assets/generate_text_fixtures.py
 
 # -------------------------------------------------------------------------------
 # DEPENDENCIES
@@ -107,7 +107,7 @@ clean-artifacts:
 # List connected PT-E920BT printers over USB
 [group('cli')]
 discover *args:
-    uv run brother-printer discover {{ args }}
+    uv run brother-ptouch-driver discover {{ args }}
 
 # ===============================================================================
 # PROJECT-SPECIFIC RECIPES

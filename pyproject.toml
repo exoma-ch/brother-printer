@@ -3,11 +3,11 @@ members = ["packages/*"]
 
 [tool.pytest.ini_options]
 testpaths = [
-    "packages/brother_printer/tests",
-    "packages/brother_printer_text/tests",
+    "packages/brother_ptouch_driver/tests",
+    "packages/brother_ptouch_label/tests",
 ]
 markers = [
-    "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PRINTER_HARDWARE=1)",
+    "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PTOUCH_DRIVER_HARDWARE=1)",
 ]
 
 [dependency-groups]

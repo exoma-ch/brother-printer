@@ -7,16 +7,16 @@ Python library and CLI for the Brother PT-E920BT label printer.
 ```
 pyproject.toml                    # uv workspace root (dev deps, pytest config)
 packages/
-  brother_printer/                # core driver + brother-printer CLI
-  brother_printer_text/           # text rendering + brother-label-text CLI
+  brother_ptouch_driver/          # P-touch driver + brother-ptouch-driver CLI
+  brother_ptouch_label/           # text rendering + brother-ptouch-label CLI
 ```
 
 ## Packages
 
 | Package | CLI | Role |
 | --- | --- | --- |
-| `brother_printer` | `brother-printer` | USB driver, raster protocol, image printing (`print_image`, `print_png`) |
-| `brother_printer_text` | `brother-label-text` | Text-to-label rendering (`render_text`, `print_text`) |
+| `brother-ptouch-driver` | `brother-ptouch-driver` | USB driver, raster protocol, image printing (`print_image`, `print_png`) |
+| `brother-ptouch-label` | `brother-ptouch-label` | Text-to-label rendering (`render_text`, `print_text`) |
 
 Install everything from the repo root:
 
@@ -24,14 +24,14 @@ Install everything from the repo root:
 uv sync --all-packages
 ```
 
-Image height must match the loaded tape width (see `brother-printer info tapes`) unless you
+Image height must match the loaded tape width (see `brother-ptouch-driver info tapes`) unless you
 pass `--scale` on print or `scale=True` in the library. Text labels use the separate
-`brother-label-text` tool:
+`brother-ptouch-label` tool:
 
 ```bash
-brother-label-text "Hello" --tape 24mm          # print
-brother-label-text "Hi\nThere" -o label.png     # render PNG (--tape optional)
-brother-label-text "Label" --rotate --width 400 # 90° across tape, fixed width
+brother-ptouch-label "Hello" --tape 24mm          # print
+brother-ptouch-label "Hi\nThere" -o label.png     # render PNG (--tape optional)
+brother-ptouch-label "Label" --rotate --width 400 # 90° across tape, fixed width
 ```
 
 Architecture: [docs/adr/0003-driver-text-decoupling.md](docs/adr/0003-driver-text-decoupling.md).

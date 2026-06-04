@@ -23,7 +23,7 @@ Adopt a five-layer architecture with strict dependency direction:
 
 ```mermaid
 flowchart TB
-    CLI["CLI brother-printer"] --> Lib["Library API (brother_printer package)"]
+    CLI["CLI brother-ptouch-driver"] --> Lib["Library API (brother_ptouch_driver package)"]
     WebV2["Web service v0.2 (future)"] -.-> Lib
     Lib --> Imaging["imaging"]
     Lib --> Protocol["protocol"]
@@ -35,11 +35,11 @@ flowchart TB
 
 | Layer | Package | Responsibility | Issue |
 | --- | --- | --- | --- |
-| Transport | `brother_printer.transport` | Byte-level USB I/O, device discovery, timeouts | [#4](https://github.com/exoma-ch/brother-printer/issues/4) |
-| Protocol | `brother_printer.protocol` | Pure P-touch raster encode/decode (bytes in, bytes out) | [#5](https://github.com/exoma-ch/brother-printer/issues/5) |
-| Imaging | `brother_printer.imaging` | PIL image → 1-bit raster lines at 360 dpi | [#6](https://github.com/exoma-ch/brother-printer/issues/6) |
-| Library API | `brother_printer` (root package) | High-level orchestration surface for consumers | #4–#8 |
-| CLI | `brother_printer.cli` | Thin command-line entry points | [#7](https://github.com/exoma-ch/brother-printer/issues/7), [#8](https://github.com/exoma-ch/brother-printer/issues/8) |
+| Transport | `brother_ptouch_driver.transport` | Byte-level USB I/O, device discovery, timeouts | [#4](https://github.com/exoma-ch/brother-printer/issues/4) |
+| Protocol | `brother_ptouch_driver.protocol` | Pure P-touch raster encode/decode (bytes in, bytes out) | [#5](https://github.com/exoma-ch/brother-printer/issues/5) |
+| Imaging | `brother_ptouch_driver.imaging` | PIL image → 1-bit raster lines at 360 dpi | [#6](https://github.com/exoma-ch/brother-printer/issues/6) |
+| Library API | `brother_ptouch_driver` (root package) | High-level orchestration surface for consumers | #4–#8 |
+| CLI | `brother_ptouch_driver.cli` | Thin command-line entry points | [#7](https://github.com/exoma-ch/brother-printer/issues/7), [#8](https://github.com/exoma-ch/brother-printer/issues/8) |
 
 ### Layer rules
 
@@ -47,14 +47,14 @@ flowchart TB
 - **Protocol** is pure (no I/O). It produces and consumes `bytes`; transport sends/receives them.
 - **Imaging** produces raster line data consumed by the protocol encoder; it does not talk to USB.
 - **CLI** orchestrates via the library API. It must not import `transport` or `protocol` directly.
-- **Library API** (`brother_printer/__init__.py`) is the public surface. Concrete callables
+- **Library API** (`brother_ptouch_driver/__init__.py`) is the public surface. Concrete callables
   (e.g. `print_image`, `discover_printers`, `query_status`) will be added as #4–#8 land.
   No separate facade module in v0.1 (YAGNI).
 
 ### v0.2 web service (future, not built in v0.1)
 
 A local HTTP service in v0.2 will accept print jobs and call the same library API the CLI
-uses. It will depend on `brother_printer` only — not on `cli`, and not on individual
+uses. It will depend on `brother_ptouch_driver` only — not on `cli`, and not on individual
 subpackages. This keeps the web layer a thin transport adapter over existing library logic.
 
 ## Consequences
@@ -82,7 +82,7 @@ file. Blocks independent testing and makes v0.2 web reuse require a large refact
 
 ### Separate `api.py` facade module
 
-**Rejected for v0.1.** The root package (`brother_printer/__init__.py`) is sufficient as the
+**Rejected for v0.1.** The root package (`brother_ptouch_driver/__init__.py`) is sufficient as the
 public surface. A dedicated facade adds a file with no behavior until #4–#8 define the API.
 Revisit if the root `__init__.py` grows unwieldy.
 
