@@ -53,7 +53,7 @@ _FIXTURES: tuple[_FixtureSpec, ...] = (
         align="right",
     ),
     _FixtureSpec("rotate_0_24mm.png", "Rotate", TapeWidth.MM_24, rotate=0),
-    _FixtureSpec("rotate_180_24mm.png", "Rotate", TapeWidth.MM_24, rotate=180),
+    _FixtureSpec("rotate_90_24mm.png", "Rotate", TapeWidth.MM_24, rotate=90),
 )
 
 

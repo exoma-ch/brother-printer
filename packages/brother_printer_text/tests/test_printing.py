@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PIL import Image
 
+from brother_printer import PrintError
 from brother_printer.protocol.decoder import PrinterStatus
 from brother_printer.protocol.enums import (
     MediaType,
@@ -88,6 +90,9 @@ def test_print_text_composes_render_and_raster(
         line_spacing=0.25,
         rotate=90,
         margin=4,
+        margin_top=8,
+        margin_left=10,
+        fixed_width=200,
         copies=2,
         threshold=200,
         half_cut=True,
@@ -103,6 +108,11 @@ def test_print_text_composes_render_and_raster(
         line_spacing=0.25,
         rotate=90,
         margin=4,
+        margin_top=8,
+        margin_bottom=None,
+        margin_left=10,
+        margin_right=None,
+        fixed_width=200,
     )
     mock_image_to_raster.assert_called_once_with(
         rendered,
@@ -119,3 +129,53 @@ def test_print_text_composes_render_and_raster(
         half_cut=True,
     )
     assert written == 200
+
+
+@patch("brother_printer_text.printing.query_status")
+@patch("brother_printer_text.printing.select_printer")
+@patch("brother_printer_text.printing.discover")
+def test_detect_tape_width_returns_media_width(
+    mock_discover,
+    mock_select_printer,
+    mock_query_status,
+):
+    """detect_tape_width() reads the loaded tape from printer status."""
+    from brother_printer_text.printing import detect_tape_width
+
+    printer = _sample_printer()
+    mock_discover.return_value = [printer]
+    mock_select_printer.return_value = printer
+    mock_query_status.return_value = _ready_status(tape=TapeWidth.MM_18)
+
+    assert detect_tape_width() == TapeWidth.MM_18
+    mock_select_printer.assert_called_once_with([printer], None)
+    mock_query_status.assert_called_once_with(printer)
+
+
+@patch("brother_printer_text.printing.query_status")
+@patch("brother_printer_text.printing.select_printer")
+@patch("brother_printer_text.printing.discover")
+def test_detect_tape_width_raises_when_no_tape(
+    mock_discover,
+    mock_select_printer,
+    mock_query_status,
+):
+    """detect_tape_width() raises when the printer reports no tape."""
+    from brother_printer_text.printing import detect_tape_width
+
+    printer = _sample_printer()
+    mock_discover.return_value = [printer]
+    mock_select_printer.return_value = printer
+    mock_query_status.return_value = PrinterStatus(
+        media_width=None,
+        media_type=MediaType.LAMINATED,
+        errors=(),
+        status_type=StatusType.REPLY,
+        phase_type=PhaseType.EDITING,
+        phase_number=0,
+        notification=Notification.NOT_AVAILABLE,
+        tape_color=TapeColor.WHITE,
+    )
+
+    with pytest.raises(PrintError, match="No tape loaded"):
+        detect_tape_width()

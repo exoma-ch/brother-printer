@@ -40,7 +40,7 @@ _GOLDEN_CASES: tuple[_GoldenCase, ...] = (
     _GoldenCase("align_left_24mm.png", "ABCDEFGH", TapeWidth.MM_24, align="left"),
     _GoldenCase("align_right_24mm.png", "ABCDEFGH", TapeWidth.MM_24, align="right"),
     _GoldenCase("rotate_0_24mm.png", "Rotate", TapeWidth.MM_24, rotate=0),
-    _GoldenCase("rotate_180_24mm.png", "Rotate", TapeWidth.MM_24, rotate=180),
+    _GoldenCase("rotate_90_24mm.png", "Rotate", TapeWidth.MM_24, rotate=90),
 )
 
 

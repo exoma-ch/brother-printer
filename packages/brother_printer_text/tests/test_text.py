@@ -13,7 +13,7 @@ from brother_printer.protocol.enums import TapeWidth
 from brother_printer_text.text import max_font_size, render_text
 
 _ALL_TAPES = list(TapeWidth)
-_ALL_ROTATIONS = [0, 90, 180, 270]
+_VALID_ROTATIONS = [0, 90]
 
 _FILL_RATIO = 0.8
 
@@ -38,6 +38,25 @@ def _block_height(
     line_h = _line_height(font)
     gap = round(line_spacing * line_h) if lines > 1 else 0
     return lines * line_h + (lines - 1) * gap
+
+
+def _max_line_width(
+    size: int,
+    lines: int,
+    *,
+    font_path: str | None = None,
+) -> int:
+    if font_path:
+        font = ImageFont.truetype(font_path, size)
+    else:
+        font = ImageFont.load_default(size=size)
+    draw = ImageDraw.Draw(Image.new("L", (1, 1)))
+    sample = ["Ay"] * lines
+    return max(
+        draw.textbbox((0, 0), line, font=font)[2]
+        - draw.textbbox((0, 0), line, font=font)[0]
+        for line in sample
+    )
 
 
 def _max_allowed(tape_width: TapeWidth) -> int:
@@ -111,6 +130,22 @@ def test_max_font_size_rejects_invalid_line_count(lines):
         max_font_size(TapeWidth.MM_24, lines)
 
 
+def test_max_font_size_rotate_90_fits_line_width():
+    """At 90°, max_font_size constrains the longest line width to the print area."""
+    tape = TapeWidth.MM_24
+    size = max_font_size(tape, 1, rotate=90)
+    width = _max_line_width(size, 1)
+    assert width <= _max_allowed(tape)
+
+
+def test_max_font_size_rotate_90_is_maximal():
+    """At 90°, size + 1 exceeds the allowed line width."""
+    tape = TapeWidth.MM_24
+    size = max_font_size(tape, 1, rotate=90)
+    width_next = _max_line_width(size + 1, 1)
+    assert width_next > _max_allowed(tape)
+
+
 def _ink_centroid_x(image: Image.Image) -> float:
     pixels = image.load()
     assert pixels is not None
@@ -131,7 +166,7 @@ def _ink_pixel_count(image: Image.Image) -> int:
 
 
 @pytest.mark.parametrize("tape_width", _ALL_TAPES)
-@pytest.mark.parametrize("rotate", _ALL_ROTATIONS)
+@pytest.mark.parametrize("rotate", _VALID_ROTATIONS)
 def test_render_text_height_matches_tape(tape_width, rotate):
     """Rendered image height always equals print_area_pins."""
     image = render_text("Hello", tape_width, rotate=rotate)
@@ -164,7 +199,14 @@ def test_render_text_multiline_keeps_tape_height():
 def test_render_text_align_shifts_ink_centroid(align, relation):
     """Horizontal alignment shifts where ink sits along the label length."""
     tape = TapeWidth.MM_24
-    wide = render_text("ABCDEFGH", tape, align=align, font_size=40, margin=80)
+    wide = render_text(
+        "ABCDEFGH",
+        tape,
+        align=align,
+        font_size=40,
+        margin_left=80,
+        margin_right=80,
+    )
     centroid = _ink_centroid_x(wide)
     mid = wide.width / 2
     if relation == "less":
@@ -183,32 +225,30 @@ def test_render_text_explicit_font_size_increases_ink():
     assert _ink_pixel_count(large) >= _ink_pixel_count(auto)
 
 
-def test_render_text_rotate_90_matches_zero():
-    """90-degree rotation renders the same full-length label as 0 degrees."""
+def test_render_text_rotate_90_differs_from_zero():
+    """90-degree rotation swaps feed and cross-tape dimensions."""
     tape = TapeWidth.MM_24
-    flat = render_text("Rotate", tape, rotate=0)
-    turned = render_text("Rotate", tape, rotate=90)
-    assert turned.size == flat.size
-    assert turned.tobytes() == flat.tobytes()
-    assert _ink_pixel_count(turned) == _ink_pixel_count(flat)
+    flat = render_text("Rotate", tape, rotate=0, font_size=32)
+    turned = render_text("Rotate", tape, rotate=90, font_size=32)
+    assert turned.size != flat.size
+    assert turned.height == tape.print_area_pins
+    assert turned.width < flat.width
 
 
-def test_render_text_rotate_270_matches_180():
-    """270-degree rotation renders the same full-length label as 180 degrees."""
-    tape = TapeWidth.MM_24
-    upside_down = render_text("Rotate", tape, rotate=180)
-    turned = render_text("Rotate", tape, rotate=270)
-    assert turned.size == upside_down.size
-    assert turned.tobytes() == upside_down.tobytes()
-
-
-def test_render_text_rotate_90_preserves_full_text_on_wide_tape():
-    """Regression: rotated text must not be cropped on wide tape."""
+def test_render_text_rotate_90_preserves_ink_on_wide_tape():
+    """Rotated text keeps comparable ink coverage on wide tape."""
     tape = TapeWidth.MM_36
-    flat = render_text("Hello Lars", tape, rotate=0)
-    turned = render_text("Hello Lars", tape, rotate=90)
-    assert turned.width == flat.width
-    assert _ink_pixel_count(turned) == _ink_pixel_count(flat)
+    flat = render_text("Hello Lars", tape, rotate=0, font_size=32)
+    turned = render_text("Hello Lars", tape, rotate=90, font_size=32)
+    assert _ink_pixel_count(turned) > 0
+    assert abs(_ink_pixel_count(turned) - _ink_pixel_count(flat)) < 50
+
+
+def test_render_text_rotate_90_rejects_overflowing_font():
+    """Explicit font too wide for 90° tape raises ImagingError."""
+    tape = TapeWidth.MM_12
+    with pytest.raises(ImagingError, match="exceeds printable width"):
+        render_text("WIDE", tape, rotate=90, font_size=200)
 
 
 def test_render_text_default_font_size_floors_small_tape():
@@ -243,7 +283,7 @@ def test_render_text_rejects_invalid_align():
         render_text("Hi", TapeWidth.MM_24, align="justify")
 
 
-@pytest.mark.parametrize("rotate", [45, 91, 360])
+@pytest.mark.parametrize("rotate", [45, 180, 270, 91, 360])
 def test_render_text_rejects_invalid_rotate(rotate):
     """Invalid rotation raises ImagingError."""
     with pytest.raises(ImagingError, match="rotation"):
@@ -254,6 +294,50 @@ def test_render_text_rejects_negative_margin():
     """Negative margin raises ImagingError."""
     with pytest.raises(ImagingError, match="margin"):
         render_text("Hi", TapeWidth.MM_24, margin=-1)
+
+
+def test_render_text_rejects_negative_margin_top():
+    """Negative per-edge margin raises ImagingError."""
+    with pytest.raises(ImagingError, match="margin_top"):
+        render_text("Hi", TapeWidth.MM_24, margin_top=-1)
+
+
+def test_render_text_per_edge_margins_increase_canvas():
+    """Per-edge margins expand the rendered canvas."""
+    tape = TapeWidth.MM_24
+    plain = render_text("Hi", tape, font_size=32)
+    padded = render_text(
+        "Hi",
+        tape,
+        font_size=32,
+        margin_top=10,
+        margin_bottom=5,
+        margin_left=20,
+        margin_right=15,
+    )
+    assert padded.width > plain.width
+    assert padded.height == plain.height
+
+
+def test_render_text_fixed_width_pads_short_label():
+    """fixed_width pads a narrow label to the requested width."""
+    tape = TapeWidth.MM_24
+    image = render_text("Hi", tape, font_size=32, fixed_width=400)
+    assert image.width == 400
+    assert image.height == tape.print_area_pins
+
+
+def test_render_text_fixed_width_rejects_overflow():
+    """fixed_width raises when rendered content is wider than requested."""
+    tape = TapeWidth.MM_24
+    wide = render_text("ABCDEFGHIJKLMNOP", tape, font_size=48)
+    with pytest.raises(ImagingError, match="exceeds fixed width"):
+        render_text(
+            "ABCDEFGHIJKLMNOP",
+            tape,
+            font_size=48,
+            fixed_width=wide.width - 1,
+        )
 
 
 @pytest.mark.parametrize("font_size", [0, -1])
@@ -304,8 +388,8 @@ def _text_to_job(text: str, tape: TapeWidth, **kwargs: object) -> bytes:
         ("Align", {"align": "right"}),
         ("Sized", {"font_size": 48}),
         ("Turn", {"rotate": 90}),
-        ("Turn", {"rotate": 180}),
-        ("Turn", {"rotate": 270}),
+        ("Padded", {"margin_left": 10, "margin_right": 10}),
+        ("Fixed", {"fixed_width": 500, "font_size": 32}),
     ],
 )
 def test_render_text_end_to_end_feature_matrix(label, kwargs):
