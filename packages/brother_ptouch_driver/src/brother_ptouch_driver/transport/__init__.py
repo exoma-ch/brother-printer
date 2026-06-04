@@ -11,11 +11,13 @@ from brother_ptouch_driver.transport.errors import (
     TransportError,
     TransportTimeoutError,
 )
+from brother_ptouch_driver.transport.loopback import LoopbackTransport
 from brother_ptouch_driver.transport.usb import UsbTransport, discover
 
 __all__ = [
     "DeviceBusyError",
     "DeviceNotFoundError",
+    "LoopbackTransport",
     "PermissionDeniedError",
     "PrinterInfo",
     "Transport",

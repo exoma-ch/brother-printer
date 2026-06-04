@@ -24,6 +24,10 @@ class Transport(Protocol):
         """Read up to n bytes from the printer."""
         ...
 
+    def read_exact(self, n: int, timeout_ms: int | None = None) -> bytes:
+        """Read exactly n bytes, raising on timeout before n arrive."""
+        ...
+
 
 @dataclass(frozen=True)
 class PrinterInfo:
