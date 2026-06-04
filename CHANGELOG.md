@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `scale=True` uses lossless integer nearest-neighbor when possible; non-integer factors resample
   - Renamed `allow_distortion` to `scale` across library and CLI
 
+- **Coverage scoped to package src**
+  - `just test-cov` reports coverage for `packages/*/src` only; test modules are no longer included
+
 ### Removed
 
 - **Driver imaging rotate and margin** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
