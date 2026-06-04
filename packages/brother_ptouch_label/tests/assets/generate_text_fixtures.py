@@ -5,7 +5,7 @@ identical in the devcontainer and CI.
 
 Run via::
 
-    just gen-text-images
+    just gen-fixtures-labels
 """
 
 from __future__ import annotations

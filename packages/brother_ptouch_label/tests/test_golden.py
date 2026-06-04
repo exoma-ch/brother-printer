@@ -4,7 +4,7 @@ Committed ONGs under tests/assets/golden/ are compared byte-for-byte against
 fresh renders using the bundled DejaVuSans.ttf. When rendering intentionally
 changes, regenerate fixtures::
 
-    just gen-text-images
+    just gen-fixtures-labels
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def test_render_text_matches_golden(case: _GoldenCase, golden_font: Path) -> Non
     """Rendered output matches the committed golden PNG."""
     expected_path = _GOLDEN_DIR / case.filename
     assert expected_path.is_file(), (
-        f"missing golden {case.filename}; run: just gen-text-images"
+        f"missing golden {case.filename}; run: just gen-fixtures-labels"
     )
 
     expected = Image.open(expected_path).convert("L")

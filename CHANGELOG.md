@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Text package golden-image tests and per-package test recipes** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
   - Bundled DejaVuSans.ttf and committed PNG goldens for deterministic `render_text` regression tests
-  - `just test-core`, `just test-text`, and `just gen-text-images` for scoped test runs and fixture regeneration
+  - `just test-core`, `just test-text`, and `just gen-fixtures-labels` for scoped test runs and fixture regeneration
 
 ### Changed
 
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
   - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
-  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`
+  - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-fixtures-driver`
   - Minimal-tape matrix: P1 sends one `encode_strip_job` chained strip (FF between pages, single end cut) for rotations/threshold/distortion; plus raw encode, half-cut strip, and full-cut copies
 
 - **PT-E920BT vendor documentation** ([#1](https://github.com/exoma-ch/brother-printer/issues/1))
@@ -106,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI print command with tape selection and auto-cut** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
   - `brother-printer print PATH --tape {3.5|6|9|12|18|24|36}mm` with `--auto-cut`/`--no-cut`, `--copies`, `--threshold`, `--rotate`, `--margin`, and `--printer`
   - `print_image()` library orchestrator with tape-width safety check against printer status
-  - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-test-images`
+  - Opt-in hardware print-matrix test with pre-computed QR fixtures under `tests/hardware/assets/`; regenerate via `just gen-fixtures-driver`
 
 - **CLI status, discover --status, and info tapes** ([#8](https://github.com/exoma-ch/brother-printer/issues/8), [#19](https://github.com/exoma-ch/brother-printer/issues/19))
   - `brother-printer status [-p ID]` shows loaded tape, color, media type, phase, and error state
@@ -128,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - P1 visual-variations strip uses one chained job instead of repeated `print_image` ejects (eliminates blank tape between segments); hardware margin case dropped
 
 - **Hardware QR fixtures show rotation on printed labels** ([#7](https://github.com/exoma-ch/brother-printer/issues/7))
-  - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-test-images`
+  - Square fixtures with a top-edge orientation bar so `rotate=90` is visible on hardware; regenerate via `just gen-fixtures-driver`
   - Unit tests prove rotation changes raster bytes and that four quarter-turns restore the image
   - Print-matrix hardware test waits until the printer is idle and uses longer status timeouts; matrix trimmed to two rotation cases (auto-cut removed because single-page jobs always feed and cut when no-chain is enabled)
 
