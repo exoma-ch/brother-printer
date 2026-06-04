@@ -10,6 +10,7 @@ from PIL import Image
 
 from brother_ptouch_driver import (
     DeviceNotFoundError,
+    ImagingError,
     PrintError,
     TapeWidth,
     TransportError,
@@ -21,7 +22,6 @@ from brother_ptouch_driver import (
 )
 from brother_ptouch_driver.cli.csv_jobs import load_csv_jobs
 from brother_ptouch_driver.cli.render import render_status, status_has_errors
-from brother_ptouch_driver.imaging.errors import ImagingError
 
 _TAPE_CHOICES: dict[str, TapeWidth] = {
     "3.5mm": TapeWidth.MM_3_5,
