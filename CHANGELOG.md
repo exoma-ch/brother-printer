@@ -20,11 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
   - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
 
+- **Text package rendering and CLI enhancements**
+  - Real 0°/90° rotation (`--rotate` flag); 180°/270° removed
+  - Per-edge margins (`--margin-top`, `--margin-bottom`, `--margin-left`, `--margin-right`) and `--width` fixed label width
+  - `brother-label-text` positional text argument; optional `--tape` with auto-detect from printer status
+  - `--output` / `-o` writes a PNG without printing; `detect_tape_width()` exported from `brother_printer_text`
+
 - **Text package golden-image tests and per-package test recipes** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
   - Bundled DejaVuSans.ttf and committed PNG goldens for deterministic `render_text` regression tests
   - `just test-core`, `just test-text`, and `just gen-text-images` for scoped test runs and fixture regeneration
 
 ### Changed
+
+- **brother-label-text CLI and rotation behavior**
+  - Text is a positional argument (`--text` removed); `--tape` optional (auto-detect from printer status)
+  - `--rotate` toggles 90° across-tape layout; 180°/270° rotation removed
+  - Per-edge margin options and `--width` for fixed label length; `-o` renders PNG without printing
 
 - **Symmetric uv workspace layout** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
   - Core package and tests moved to `packages/brother_printer/`; repo root is a virtual workspace root

@@ -9,7 +9,8 @@ import click
 
 from brother_printer import PrintError, TapeWidth, TransportError
 from brother_printer.imaging.errors import ImagingError
-from brother_printer_text.printing import print_text
+from brother_printer_text.printing import detect_tape_width, print_text
+from brother_printer_text.text import render_text
 
 _TAPE_CHOICES: dict[str, TapeWidth] = {
     "3.5mm": TapeWidth.MM_3_5,
@@ -22,17 +23,35 @@ _TAPE_CHOICES: dict[str, TapeWidth] = {
 }
 
 
+def _resolve_tape(tape: str | None, *, printer: str | None) -> TapeWidth:
+    if tape is not None:
+        return _TAPE_CHOICES[tape]
+    return detect_tape_width(printer=printer)
+
+
+def _resolve_margins(
+    margin: int,
+    margin_top: int | None,
+    margin_bottom: int | None,
+    margin_left: int | None,
+    margin_right: int | None,
+) -> dict[str, int | None]:
+    return {
+        "margin": margin,
+        "margin_top": margin_top,
+        "margin_bottom": margin_bottom,
+        "margin_left": margin_left,
+        "margin_right": margin_right,
+    }
+
+
 @click.command()
-@click.option(
-    "--text",
-    required=True,
-    help="Label text to print (use \\n for multiple lines).",
-)
+@click.argument("text")
 @click.option(
     "--tape",
-    required=True,
+    default=None,
     type=click.Choice(sorted(_TAPE_CHOICES.keys())),
-    help="TZe tape width loaded in the printer.",
+    help="TZe tape width (default: read from printer).",
 )
 @click.option(
     "--font",
@@ -73,18 +92,35 @@ _TAPE_CHOICES: dict[str, TapeWidth] = {
     help="Monochrome threshold (0-255).",
 )
 @click.option(
-    "--rotate",
-    type=click.Choice(["0", "90", "180", "270"]),
-    default="0",
+    "--rotate/--no-rotate",
+    default=False,
     show_default=True,
-    help="Rotate label before printing (0/90/180/270 degrees).",
+    help="Rotate label 90° (text across the tape).",
 )
 @click.option(
     "--margin",
     type=click.IntRange(min=0),
     default=0,
     show_default=True,
-    help="White margin in pixels on all sides.",
+    help="White margin in pixels on all sides (overridden per edge).",
+)
+@click.option("--margin-top", type=click.IntRange(min=0), default=None)
+@click.option("--margin-bottom", type=click.IntRange(min=0), default=None)
+@click.option("--margin-left", type=click.IntRange(min=0), default=None)
+@click.option("--margin-right", type=click.IntRange(min=0), default=None)
+@click.option(
+    "--width",
+    "fixed_width",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Fixed label width in pixels along the feed axis.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write rendered PNG instead of printing.",
 )
 @click.option(
     "--printer",
@@ -95,7 +131,7 @@ _TAPE_CHOICES: dict[str, TapeWidth] = {
 @click.version_option(package_name="brother_printer_text")
 def main(
     text: str,
-    tape: str,
+    tape: str | None,
     font: Path | None,
     font_size: int | None,
     align: str,
@@ -104,29 +140,57 @@ def main(
     half_cut: bool,
     copies: int,
     threshold: int,
-    rotate: str,
+    rotate: bool,
     margin: int,
+    margin_top: int | None,
+    margin_bottom: int | None,
+    margin_left: int | None,
+    margin_right: int | None,
+    fixed_width: int | None,
+    output: Path | None,
     printer: str | None,
 ) -> None:
     """Print a text label on a connected PT-E920BT."""
-    tape_width = _TAPE_CHOICES[tape]
     label_text = text.replace("\\n", "\n")
+    margin_kwargs = _resolve_margins(
+        margin,
+        margin_top,
+        margin_bottom,
+        margin_left,
+        margin_right,
+    )
+    render_kwargs = {
+        "font_path": str(font) if font is not None else None,
+        "font_size": font_size,
+        "align": align,
+        "line_spacing": line_spacing,
+        "rotate": 90 if rotate else 0,
+        "fixed_width": fixed_width,
+        **margin_kwargs,
+    }
 
     try:
+        tape_width = _resolve_tape(tape, printer=printer)
+    except (PrintError, TransportError) as exc:
+        click.echo(str(exc), err=True)
+        sys.exit(1)
+
+    try:
+        if output is not None:
+            image = render_text(label_text, tape_width, **render_kwargs)
+            image.save(output)
+            click.echo(f"Wrote {output}.")
+            return
+
         written = print_text(
             label_text,
             tape_width,
             printer=printer,
             copies=copies,
-            font_path=str(font) if font is not None else None,
-            font_size=font_size,
-            align=align,
-            line_spacing=line_spacing,
-            rotate=int(rotate),
-            margin=margin,
             threshold=threshold,
             auto_cut=auto_cut,
             half_cut=half_cut,
+            **render_kwargs,
         )
     except (PrintError, TransportError, ImagingError) as exc:
         click.echo(str(exc), err=True)

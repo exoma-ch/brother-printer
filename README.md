@@ -26,7 +26,13 @@ uv sync --all-packages
 
 Image height must match the loaded tape width (see `brother-printer info tapes`) unless you
 pass `--scale` on print or `scale=True` in the library. Text labels use the separate
-`brother-label-text` tool.
+`brother-label-text` tool:
+
+```bash
+brother-label-text "Hello" --tape 24mm          # print
+brother-label-text "Hi\nThere" -o label.png     # render PNG (--tape optional)
+brother-label-text "Label" --rotate --width 400 # 90° across tape, fixed width
+```
 
 Architecture: [docs/adr/0003-driver-text-decoupling.md](docs/adr/0003-driver-text-decoupling.md).
 
