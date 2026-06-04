@@ -28,6 +28,9 @@ class _TransportStub:
         del self._buffer[:n]
         return chunk
 
+    def read_exact(self, n: int, timeout_ms: int | None = None) -> bytes:
+        return self.read(n, timeout_ms)
+
 
 def test_transport_protocol_is_runtime_checkable():
     """Transport is a runtime-checkable Protocol."""

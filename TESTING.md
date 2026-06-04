@@ -32,11 +32,38 @@ the printer is busy. Idle wait allows up to **3 minutes** after chained print jo
 | Directory | Coverage |
 | --- | --- |
 | `packages/brother_ptouch_driver/tests/protocol/` | Encoder/decoder golden files, constants, enums |
-| `packages/brother_ptouch_driver/tests/transport/` | USB transport (pyusb mocked), discover, errors |
+| `packages/brother_ptouch_driver/tests/transport/` | USB transport (pyusb mocked), `LoopbackTransport`, discover, errors |
 | `packages/brother_ptouch_driver/tests/imaging/` | `image_to_raster` pipeline (strict sizing, `--scale`) |
-| `packages/brother_ptouch_driver/tests/` | Driver library orchestration (`print_image`, `print_png`, `print_strip`, `query_status`) |
+| `packages/brother_ptouch_driver/tests/` | Driver library orchestration (`print_image`, `print_png`, `print_strip`, `query_status`) and the `LoopbackTransport` end-to-end golden |
 | `packages/brother_ptouch_driver/tests/cli/` | Driver CLI commands, CSV jobs, import boundaries (ADR-0002) |
 | `packages/brother_ptouch_label/tests/` | Text rendering (`render_text`, `max_font_size`, `print_text`, `brother-ptouch-label` CLI) |
+
+## Golden files
+
+Deterministic byte/image snapshots committed under the suite. They run in CI
+with no hardware:
+
+| Golden | Source of truth |
+| --- | --- |
+| `tests/protocol/golden/*.bin` | Encoder/decoder output for fixed inputs |
+| `tests/golden/print_image_24mm.bin` | Full status-request + encoded job captured through `LoopbackTransport` for a 24 mm checkerboard |
+| `packages/brother_ptouch_label/tests/assets/golden/*.png` | `render_text` output |
+
+`LoopbackTransport` (`brother_ptouch_driver.transport.LoopbackTransport`) is the
+hardware-free, in-memory transport used to capture these bytes: it records every
+`write()` and replays canned `read`/`read_exact` replies, so `print_image` runs
+the real imaging and encoder path with no USB device.
+
+**Regenerating after an intentional protocol or imaging change:** the
+end-to-end golden is rewritten in place when `UPDATE_GOLDEN` is set:
+
+```bash
+UPDATE_GOLDEN=1 just test    # rewrites tests/golden/print_image_24mm.bin
+```
+
+Review the resulting diff carefully and commit it only when the byte change is
+expected. Encoder/decoder `.bin` goldens are committed snapshots; update them the
+same way you would any fixture when the documented protocol output changes.
 
 ## Hardware suite layout
 

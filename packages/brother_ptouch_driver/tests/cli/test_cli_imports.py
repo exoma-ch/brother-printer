@@ -9,6 +9,7 @@ _CLI_DIR = Path(__file__).resolve().parents[2] / "src" / "brother_ptouch_driver"
 _FORBIDDEN_PREFIXES = (
     "brother_ptouch_driver.transport",
     "brother_ptouch_driver.protocol",
+    "brother_ptouch_driver.imaging",
 )
 
 
@@ -33,3 +34,14 @@ def test_cli_does_not_import_transport_or_protocol():
         for name in _forbidden_imports_in(path):
             violations.append(f"{path.name}: {name}")
     assert violations == []
+
+
+def test_library_reexports_imaging_errors():
+    """Imaging error types are available on the library API surface."""
+    import brother_ptouch_driver
+
+    from brother_ptouch_driver import ImageScalingError, ImagingError
+
+    assert "ImagingError" in brother_ptouch_driver.__all__
+    assert "ImageScalingError" in brother_ptouch_driver.__all__
+    assert issubclass(ImageScalingError, ImagingError)

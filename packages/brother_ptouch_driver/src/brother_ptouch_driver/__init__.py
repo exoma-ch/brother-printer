@@ -1,5 +1,6 @@
 """Brother PT-E920BT label printer library and CLI."""
 
+from brother_ptouch_driver.imaging.errors import ImageScalingError, ImagingError
 from brother_ptouch_driver.printing import (
     HalfCutNotSupportedError,
     PrintError,
@@ -30,6 +31,8 @@ __all__ = [
     "DeviceBusyError",
     "DeviceNotFoundError",
     "HalfCutNotSupportedError",
+    "ImageScalingError",
+    "ImagingError",
     "PermissionDeniedError",
     "PrintError",
     "PrinterInfo",

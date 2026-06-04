@@ -46,7 +46,7 @@ flowchart TB
 - **Transport** knows nothing about protocol commands or image formats.
 - **Protocol** is pure (no I/O). It produces and consumes `bytes`; transport sends/receives them.
 - **Imaging** produces raster line data consumed by the protocol encoder; it does not talk to USB.
-- **CLI** orchestrates via the library API. It must not import `transport` or `protocol` directly.
+- **CLI** orchestrates via the library API. It must not import `transport`, `protocol`, or `imaging` directly (error types such as `ImagingError` are re-exported from the root package).
 - **Library API** (`brother_ptouch_driver/__init__.py`) is the public surface. Concrete callables
   (e.g. `print_image`, `discover_printers`, `query_status`) will be added as #4–#8 land.
   No separate facade module in v0.1 (YAGNI).

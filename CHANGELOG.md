@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Scoped hardware test recipes** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
   - `just test-connect` (connectivity + status, no tape), `just test-print` (print matrix), and `just test-all` (full suite incl. hardware)
 
+- **In-memory loopback transport and end-to-end print golden** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
+  - `LoopbackTransport` records writes and replays canned replies, implementing the `Transport` protocol as a hardware-free drop-in for `UsbTransport`
+  - `Transport` protocol gains `read_exact`, which the print orchestration already relied on
+  - End-to-end `print_image` golden (`tests/golden/print_image_24mm.bin`) drives the real imaging and encoder path with no hardware; regenerate with `UPDATE_GOLDEN=1` (see TESTING.md)
+
 ### Changed
 
 - **Hardware print test fixtures and coverage** ([#27](https://github.com/exoma-ch/brother-printer/issues/27))
@@ -62,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Coverage scoped to package src**
   - `just test-cov` reports coverage for `packages/*/src` only; test modules are no longer included
+
+- **Imaging errors re-exported from the library API** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
+  - `ImagingError` and `ImageScalingError` are now available from `brother_ptouch_driver`; the CLI imports them from the library surface and ADR-0002 forbids direct `imaging` imports from the CLI
 
 ### Removed
 
