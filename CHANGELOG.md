@@ -9,11 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Driver and text decoupling (uv workspace)** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `brother_printer_text` workspace package with `render_text`, `max_font_size`, and `print_text`
+  - `brother-label-text` CLI for text labels (`--font`, `--font-size`, `--align`, `--line-spacing`)
+  - `print_png(bytes)` entrypoint on the core library for PNG-at-the-edge callers
+  - ADR-0003 documents the split, strict image-height contract, and `--scale` behavior
+
 - **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
-  - `render_text`, `max_font_size`, and `print_text` for multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
+  - Multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
   - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
-  - CLI `brother-printer print --text` with `--font`, `--font-size`, `--align`, and `--line-spacing`
   - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
+
+### Changed
+
+- **Symmetric uv workspace layout** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - Core package and tests moved to `packages/brother_printer/`; repo root is a virtual workspace root
+  - Both workspace members now live under `packages/`; see ADR-0003
+
+- **Strict image height for printing** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `print_image` / `image_to_raster` require image height to match tape print area unless `scale=True` or `--scale`
+  - `scale=True` uses lossless integer nearest-neighbor when possible; non-integer factors resample
+  - Renamed `allow_distortion` to `scale` across library and CLI
+
+### Removed
+
+- **Text printing from core package** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `render_text`, `max_font_size`, and `print_text` no longer exported from `brother_printer`
+  - `brother-printer print --text` removed; use `brother-label-text` instead
 
 - **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
   - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix

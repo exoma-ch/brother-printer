@@ -18,7 +18,7 @@ sudo dnf install libusb
 Install the Python package (includes the `brother-printer` CLI):
 
 ```bash
-uv sync
+uv sync --all-packages
 # or: pip install .
 ```
 
