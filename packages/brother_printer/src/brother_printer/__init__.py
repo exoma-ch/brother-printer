@@ -1,14 +1,13 @@
 """Brother PT-E920BT label printer library and CLI."""
 
-from brother_printer.imaging.text import max_font_size, render_text
 from brother_printer.printing import (
     HalfCutNotSupportedError,
     PrintError,
     PrinterNotReadyError,
     TapeMismatchError,
     print_image,
+    print_png,
     print_strip,
-    print_text,
     query_status,
     select_printer,
 )
@@ -42,11 +41,9 @@ __all__ = [
     "TransportTimeoutError",
     "__version__",
     "discover_printers",
-    "max_font_size",
     "print_image",
+    "print_png",
     "print_strip",
-    "print_text",
     "query_status",
-    "render_text",
     "select_printer",
 ]

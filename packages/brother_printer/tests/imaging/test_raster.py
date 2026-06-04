@@ -133,12 +133,30 @@ def test_apply_margin_rejects_negative():
         apply_margin(image, -1)
 
 
-def test_resize_to_tape_width_integer_upscale_preserves_modules():
-    """Integer nearest-neighbor upscale keeps QR modules sharp."""
+def test_resize_to_tape_width_strict_rejects_wrong_height():
+    """Strict mode rejects images whose height does not match the tape print area."""
+    image = Image.new("1", (100, 100), 255)
+
+    with pytest.raises(ImageScalingError, match="must equal print area"):
+        resize_to_tape_width(image, TapeWidth.MM_24)
+
+
+def test_resize_to_tape_width_strict_accepts_exact_height():
+    """Strict mode passes through images already at tape print area height."""
+    tape = TapeWidth.MM_24
+    image = Image.new("1", (50, tape.print_area_pins), 255)
+
+    resized = resize_to_tape_width(image, tape)
+
+    assert resized.size == image.size
+
+
+def test_resize_to_tape_width_scale_integer_upscale_preserves_modules():
+    """Integer nearest-neighbor upscale keeps QR modules sharp when scale=True."""
     # 20 modules x 4 px = 80 px; 80 -> 320 pins is factor 4 on 24 mm tape.
     image = _checkerboard(modules=20, module_px=4, mode="1")
 
-    resized = resize_to_tape_width(image, TapeWidth.MM_24)
+    resized = resize_to_tape_width(image, TapeWidth.MM_24, scale=True)
 
     assert resized.size == (320, 320)
     module_px = 16
@@ -160,22 +178,14 @@ def test_resize_to_tape_width_integer_upscale_preserves_modules():
             assert resized.getpixel(opposite) == expected
 
 
-def test_resize_to_tape_width_rejects_non_integer_factor():
-    """Non-integer scale factors raise ImageScalingError by default."""
-    image = Image.new("1", (100, 100), 255)
-
-    with pytest.raises(ImageScalingError, match="integer"):
-        resize_to_tape_width(image, TapeWidth.MM_24)
-
-
-def test_resize_to_tape_width_allow_distortion():
-    """allow_distortion bypasses integer factor requirement."""
+def test_resize_to_tape_width_scale_non_integer_resamples():
+    """scale=True resamples when height is not an integer multiple of print area."""
     image = Image.new("1", (100, 100), 255)
     pixels = image.load()
     assert pixels is not None
     pixels[0, 0] = 0
 
-    resized = resize_to_tape_width(image, TapeWidth.MM_24, allow_distortion=True)
+    resized = resize_to_tape_width(image, TapeWidth.MM_24, scale=True)
 
     assert resized.size[1] == TapeWidth.MM_24.print_area_pins
     assert resized.getpixel((0, 0)) == 0
@@ -227,7 +237,14 @@ def test_image_to_raster_end_to_end():
     """image_to_raster output feeds encoder.raster_line() and encode_job()."""
     image = _checkerboard(modules=20, module_px=4, mode="RGB")
 
-    lines = image_to_raster(image, TapeWidth.MM_24, threshold=128, rotate=0, margin=0)
+    lines = image_to_raster(
+        image,
+        TapeWidth.MM_24,
+        threshold=128,
+        rotate=0,
+        margin=0,
+        scale=True,
+    )
 
     assert len(lines) == 320
     for line in lines:
@@ -244,13 +261,13 @@ def test_image_to_raster_with_margin_and_rotation():
     assert pixels is not None
     pixels[0, 0] = 0
 
-    base_lines = image_to_raster(image, TapeWidth.MM_24)
+    base_lines = image_to_raster(image, TapeWidth.MM_24, scale=True)
     assert len(base_lines) == 160
 
-    rotated_lines = image_to_raster(image, TapeWidth.MM_24, rotate=90)
+    rotated_lines = image_to_raster(image, TapeWidth.MM_24, rotate=90, scale=True)
     assert len(rotated_lines) == 640
 
-    margined_lines = image_to_raster(image, TapeWidth.MM_24, margin=20)
+    margined_lines = image_to_raster(image, TapeWidth.MM_24, margin=20, scale=True)
     assert len(margined_lines) == 240
     assert all(len(line) == RASTER_LINE_BYTES for line in margined_lines)
 

@@ -13,8 +13,9 @@ from brother_printer.cli.main import main
 from brother_printer.protocol.enums import TapeWidth
 
 
-def _write_test_image(path: Path) -> None:
-    Image.new("L", (80, 80), 255).save(path)
+def _write_test_image(path: Path, *, height: int | None = None) -> None:
+    h = height if height is not None else TapeWidth.MM_24.print_area_pins
+    Image.new("L", (80, h), 255).save(path)
 
 
 @patch("brother_printer.cli.main.print_image")
@@ -37,6 +38,7 @@ def test_print_command_success(mock_print_image):
     assert kwargs["margin"] == 0
     assert kwargs["auto_cut"] is True
     assert kwargs["half_cut"] is False
+    assert kwargs["scale"] is False
     assert kwargs["printer"] is None
 
 
@@ -124,134 +126,28 @@ def test_print_command_rejects_paths_and_csv_together(mock_print_image):
 
 
 def test_print_command_requires_input_source():
-    """print exits 2 when no image path, CSV, or --text is provided."""
+    """print exits 2 when no image path or CSV is provided."""
     runner = CliRunner()
     result = runner.invoke(main, ["print", "--tape", "24mm"])
     assert result.exit_code == 2
     assert "at least one" in result.output
 
 
-@patch("brother_printer.cli.main.print_text")
-def test_print_command_text_success(mock_print_text):
-    """print routes --text to print_text()."""
-    mock_print_text.return_value = 2048
+@patch("brother_printer.cli.main.print_image")
+def test_print_command_passes_scale_flag(mock_print_image):
+    """print forwards --scale to print_image()."""
+    mock_print_image.return_value = 100
     runner = CliRunner()
-    result = runner.invoke(main, ["print", "--text", "Hello", "--tape", "24mm"])
-    assert result.exit_code == 0
-    assert "2048 bytes" in result.output
-    mock_print_text.assert_called_once_with(
-        "Hello",
-        TapeWidth.MM_24,
-        **{
-            "printer": None,
-            "copies": 1,
-            "font_path": None,
-            "font_size": None,
-            "align": "center",
-            "line_spacing": 0.0,
-            "rotate": 0,
-            "margin": 0,
-            "threshold": 128,
-            "auto_cut": True,
-            "half_cut": False,
-        },
-    )
 
-
-@patch("brother_printer.cli.main.print_text")
-def test_print_command_text_forwards_options(mock_print_text):
-    """print forwards text-related CLI options to print_text()."""
-    mock_print_text.return_value = 100
-    runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "print",
-            "--text",
-            "Label",
-            "--tape",
-            "12mm",
-            "--font-size",
-            "48",
-            "--align",
-            "left",
-            "--line-spacing",
-            "0.5",
-            "--rotate",
-            "90",
-            "--margin",
-            "3",
-            "--copies",
-            "2",
-            "--threshold",
-            "200",
-            "--no-cut",
-            "--half-cut",
-            "--printer",
-            "04f9:20c7#000123456789",
-        ],
-    )
-    assert result.exit_code == 0
-    mock_print_text.assert_called_once()
-    args, kwargs = mock_print_text.call_args
-    assert args == ("Label", TapeWidth.MM_12)
-    assert kwargs == {
-        "printer": "04f9:20c7#000123456789",
-        "copies": 2,
-        "font_path": None,
-        "font_size": 48,
-        "align": "left",
-        "line_spacing": 0.5,
-        "rotate": 90,
-        "margin": 3,
-        "threshold": 200,
-        "auto_cut": False,
-        "half_cut": True,
-    }
-
-
-@patch("brother_printer.cli.main.print_text")
-def test_print_command_text_unescapes_newlines(mock_print_text):
-    """print converts literal \\n sequences in --text to newlines."""
-    mock_print_text.return_value = 1
-    runner = CliRunner()
-    result = runner.invoke(
-        main,
-        ["print", "--text", r"Line1\nLine2", "--tape", "24mm"],
-    )
-    assert result.exit_code == 0
-    assert mock_print_text.call_args.args[0] == "Line1\nLine2"
-
-
-@patch("brother_printer.cli.main.print_text")
-def test_print_command_rejects_text_and_paths(mock_print_text):
-    """print exits 2 when both --text and image paths are provided."""
-    runner = CliRunner()
     with runner.isolated_filesystem():
-        _write_test_image(Path("label.png"))
+        _write_test_image(Path("label.png"), height=80)
         result = runner.invoke(
             main,
-            ["print", "label.png", "--text", "Hi", "--tape", "24mm"],
+            ["print", "label.png", "--tape", "24mm", "--scale"],
         )
-    assert result.exit_code == 2
-    assert "exactly one" in result.output
-    mock_print_text.assert_not_called()
 
-
-@patch("brother_printer.cli.main.print_text")
-def test_print_command_rejects_text_and_csv(mock_print_text):
-    """print exits 2 when both --text and --csv are provided."""
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        _write_test_image(Path("label.png"))
-        Path("jobs.csv").write_text("image\nlabel.png\n", encoding="utf-8")
-        result = runner.invoke(
-            main,
-            ["print", "--text", "Hi", "--tape", "24mm", "--csv", "jobs.csv"],
-        )
-    assert result.exit_code == 2
-    assert "exactly one" in result.output
-    mock_print_text.assert_not_called()
+    assert result.exit_code == 0
+    assert mock_print_image.call_args.kwargs["scale"] is True
 
 
 @patch("brother_printer.cli.main.print_image")
@@ -294,6 +190,7 @@ def test_print_command_passes_options(mock_print_image):
         "margin": 5,
         "auto_cut": False,
         "half_cut": False,
+        "scale": False,
     }
 
 
@@ -376,7 +273,7 @@ def test_print_command_reports_imaging_error(mock_print_image):
     """print surfaces imaging errors on stderr and exits 1."""
     from brother_printer.imaging.errors import ImageScalingError
 
-    mock_print_image.side_effect = ImageScalingError("QR modules would distort")
+    mock_print_image.side_effect = ImageScalingError("must equal print area")
     runner = CliRunner()
 
     with runner.isolated_filesystem():
@@ -384,4 +281,4 @@ def test_print_command_reports_imaging_error(mock_print_image):
         result = runner.invoke(main, ["print", "label.png", "--tape", "24mm"])
 
     assert result.exit_code == 1
-    assert "QR modules would distort" in result.output
+    assert "must equal print area" in result.output

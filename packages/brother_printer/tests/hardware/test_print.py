@@ -2,7 +2,7 @@
 
 Run with::
 
-    just test-hardware tests/hardware/test_print.py
+    just test-hardware packages/brother_printer/tests/hardware/test_print.py
 
 Consumes tape. Requires USB passthrough, udev permissions, a loaded TZe tape
 matching committed fixtures, and ``BROTHER_PRINTER_HARDWARE=1``. See TESTING.md
@@ -19,7 +19,7 @@ from PIL import Image
 
 from brother_printer import print_strip
 from brother_printer.imaging.raster import image_to_raster
-from brother_printer.imaging.text import render_text
+from brother_printer_text.text import render_text
 from brother_printer.protocol import (
     RASTER_LINE_BYTES,
     STATUS_REPLY_SIZE,
@@ -91,7 +91,7 @@ def test_print_visual_variations_strip(
         (fixture_path, {"rotate": 180}),
         (fixture_path, {"rotate": 270}),
         (gray_fixture_path, {"threshold": _THRESHOLD_HIGH}),
-        (distort_fixture_path, {"allow_distortion": True}),
+        (distort_fixture_path, {"scale": True}),
     ]
 
     pages: list[list[bytes]] = []

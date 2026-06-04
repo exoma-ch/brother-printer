@@ -10,23 +10,29 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "brother-printer",
+    "brother-printer-text",
+]
+
+[manifest.dependency-groups]
+dev = [
+    { name = "hatchling", specifier = ">=1.25" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-cov", specifier = ">=4.0" },
+    { name = "qrcode", specifier = ">=8.0" },
+    { name = "rich", specifier = ">=13.0.0" },
+]
+
 [[package]]
 name = "brother-printer"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "packages/brother_printer" }
 dependencies = [
     { name = "click" },
     { name = "pillow" },
     { name = "pyusb" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "hatchling" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "qrcode" },
-    { name = "rich" },
 ]
 
 [package.metadata]
@@ -36,13 +42,21 @@ requires-dist = [
     { name = "pyusb", specifier = ">=1.2" },
 ]
 
-[package.metadata.requires-dev]
-dev = [
-    { name = "hatchling", specifier = ">=1.25" },
-    { name = "pytest", specifier = ">=8.0" },
-    { name = "pytest-cov", specifier = ">=4.0" },
-    { name = "qrcode", specifier = ">=8.0" },
-    { name = "rich", specifier = ">=13.0.0" },
+[[package]]
+name = "brother-printer-text"
+version = "0.1.0"
+source = { editable = "packages/brother_printer_text" }
+dependencies = [
+    { name = "brother-printer" },
+    { name = "click" },
+    { name = "pillow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "brother-printer", editable = "packages/brother_printer" },
+    { name = "click", specifier = ">=8.1" },
+    { name = "pillow", specifier = ">=10.1" },
 ]
 
 [[package]]

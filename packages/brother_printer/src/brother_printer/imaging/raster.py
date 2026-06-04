@@ -60,32 +60,56 @@ def resize_to_tape_width(
     image: Image.Image,
     tape_width: TapeWidth,
     *,
-    allow_distortion: bool = False,
+    scale: bool = False,
 ) -> Image.Image:
-    """Resize uniformly so image height matches tape print area."""
+    """Resize uniformly so image height matches tape print area.
+
+    When scale is False (default), image height must already equal the tape print area.
+    When scale is True, integer up/downscale uses nearest-neighbor; non-integer factors
+    resample to the target height (may distort QR modules).
+    """
     width, height = image.size
     if height == 0:
         msg = "image height must be greater than zero"
         raise ImagingError(msg)
 
     target_height = tape_width.print_area_pins
-    factor = target_height / height
+    if height == target_height:
+        return image.copy()
 
-    if not allow_distortion:
-        if factor <= 0 or factor != int(factor):
-            msg = (
-                f"image height {height} requires non-integer scale factor "
-                f"{factor:.4g} for {target_height}-pin tape; "
-                "QR modules would distort"
+    if not scale:
+        msg = (
+            f"image height {height} must equal print area {target_height} pins; "
+            "pass scale=True to resize"
+        )
+        raise ImageScalingError(msg)
+
+    if height < target_height:
+        if target_height % height != 0:
+            new_width = max(1, round(width * (target_height / height)))
+            return image.resize(
+                (new_width, target_height),
+                resample=Image.Resampling.NEAREST,
             )
-            raise ImageScalingError(msg)
-        scale = int(factor)
-    else:
-        scale = factor
+        factor = target_height // height
+        new_width = width * factor
+        return image.resize(
+            (new_width, target_height),
+            resample=Image.Resampling.NEAREST,
+        )
 
-    new_width = max(1, round(width * scale))
-    new_height = target_height
-    return image.resize((new_width, new_height), resample=Image.Resampling.NEAREST)
+    if height % target_height != 0:
+        new_width = max(1, round(width * (target_height / height)))
+        return image.resize(
+            (new_width, target_height),
+            resample=Image.Resampling.NEAREST,
+        )
+    factor = height // target_height
+    new_width = max(1, width // factor)
+    return image.resize(
+        (new_width, target_height),
+        resample=Image.Resampling.NEAREST,
+    )
 
 
 def _set_pin(line: bytearray, pin: int) -> None:
@@ -131,15 +155,11 @@ def image_to_raster(
     threshold: int = 128,
     rotate: int = 0,
     margin: int = 0,
-    allow_distortion: bool = False,
+    scale: bool = False,
 ) -> list[bytes]:
     """Convert a PIL image to 70-byte raster lines for the protocol encoder."""
     mono = to_monochrome(image, threshold=threshold)
     mono = apply_rotation(mono, rotate)
     mono = apply_margin(mono, margin)
-    mono = resize_to_tape_width(
-        mono,
-        tape_width,
-        allow_distortion=allow_distortion,
-    )
+    mono = resize_to_tape_width(mono, tape_width, scale=scale)
     return pack_raster_lines(mono, tape_width)

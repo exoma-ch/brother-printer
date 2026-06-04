@@ -58,7 +58,7 @@ test-hardware *args:
 # Regenerate QR PNG fixtures for hardware print tests (issue #7)
 [group('test')]
 gen-test-images:
-    uv run python tests/hardware/assets/generate_fixtures.py
+    uv run python packages/brother_printer/tests/hardware/assets/generate_fixtures.py
 
 # -------------------------------------------------------------------------------
 # DEPENDENCIES
@@ -67,7 +67,7 @@ gen-test-images:
 # Sync all dependencies (idempotent, fast if nothing changed)
 [group('deps')]
 sync:
-    @if [ -f pyproject.toml ]; then uv sync --all-extras --all-groups; fi
+    @if [ -f pyproject.toml ]; then uv sync --all-packages --all-extras --all-groups; fi
 
 # Update all dependencies
 [group('deps')]

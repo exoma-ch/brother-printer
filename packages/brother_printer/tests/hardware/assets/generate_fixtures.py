@@ -7,7 +7,7 @@ hardware (after ``rotate=90`` the bar appears on a side edge).
 
 Grayscale gradient fixtures exercise ``threshold`` in hardware tests. The shared
 ``distort_100.png`` (100×100 px) requires a non-integer scale factor for every
-supported tape width so ``allow_distortion=True`` is meaningful.
+supported tape width so ``scale=True`` is meaningful.
 
 Run via::
 

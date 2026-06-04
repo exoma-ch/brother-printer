@@ -2,7 +2,7 @@
 
 Run with::
 
-    just test-hardware tests/hardware/test_status.py
+    just test-hardware packages/brother_printer/tests/hardware/test_status.py
 
 Requires USB passthrough and udev permissions (see docs/install/linux-usb.md).
 Non-destructive: no tape is consumed.

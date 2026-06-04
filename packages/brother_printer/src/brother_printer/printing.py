@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from io import BytesIO
+
 from PIL import Image
 
 from brother_printer.imaging.raster import image_to_raster
-from brother_printer.imaging.text import render_text
 from brother_printer.protocol.constants import STATUS_REPLY_SIZE
 from brother_printer.protocol.decoder import PrinterStatus, decode_status
 from brother_printer.protocol.encoder import (
@@ -106,10 +107,11 @@ def print_image(
     margin: int = 0,
     auto_cut: bool = True,
     half_cut: bool = False,
-    allow_distortion: bool = False,
+    scale: bool = False,
 ) -> int:
     """Print a PIL image on a connected PT-E920BT.
 
+    Image height must match the tape print area unless scale=True.
     Half-cut requires laminated tape; see docs/vendor/tze-tape-widths.md.
     """
     selected = select_printer(discover(), printer)
@@ -124,7 +126,7 @@ def print_image(
             threshold=threshold,
             rotate=rotate,
             margin=margin,
-            allow_distortion=allow_distortion,
+            scale=scale,
         )
         job = encode_job(
             tape_width,
@@ -139,44 +141,33 @@ def print_image(
         return written
 
 
-def print_text(
-    text: str,
+def print_png(
+    data: bytes,
     tape_width: TapeWidth,
     *,
     printer: str | None = None,
     copies: int = 1,
-    font_path: str | None = None,
-    font_size: int | None = None,
-    align: str = "center",
-    line_spacing: float = 0.0,
+    threshold: int = 128,
     rotate: int = 0,
     margin: int = 0,
-    threshold: int = 128,
     auto_cut: bool = True,
     half_cut: bool = False,
+    scale: bool = False,
 ) -> int:
-    """Print a text label on a connected PT-E920BT."""
-    image = render_text(
-        text,
-        tape_width,
-        font_path=font_path,
-        font_size=font_size,
-        align=align,
-        line_spacing=line_spacing,
-        rotate=rotate,
-        margin=margin,
-    )
-    return print_image(
-        image,
-        tape_width,
-        printer=printer,
-        copies=copies,
-        threshold=threshold,
-        rotate=0,
-        margin=0,
-        auto_cut=auto_cut,
-        half_cut=half_cut,
-    )
+    """Print a PNG image from raw bytes on a connected PT-E920BT."""
+    with Image.open(BytesIO(data)) as image:
+        return print_image(
+            image.copy(),
+            tape_width,
+            printer=printer,
+            copies=copies,
+            threshold=threshold,
+            rotate=rotate,
+            margin=margin,
+            auto_cut=auto_cut,
+            half_cut=half_cut,
+            scale=scale,
+        )
 
 
 def print_strip(
@@ -190,7 +181,7 @@ def print_strip(
     margin: int = 0,
     auto_cut: bool = True,
     half_cut: bool = False,
-    allow_distortion: bool = False,
+    scale: bool = False,
 ) -> int:
     """Print a chained strip of labels in one multi-page job.
 
@@ -210,7 +201,7 @@ def print_strip(
             "threshold": threshold,
             "rotate": rotate,
             "margin": margin,
-            "allow_distortion": allow_distortion,
+            "scale": scale,
         }
         pages: list[list[bytes]] = []
         for image in images:
