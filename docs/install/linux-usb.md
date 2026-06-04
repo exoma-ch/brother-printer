@@ -68,11 +68,15 @@ or I/O). Configuration lives in
 ```yaml
 volumes:
   - /dev/bus/usb:/dev/bus/usb
-group_add:
-  - keep-groups
-device_cgroup_rules:
-  - c 189:* rwm
 ```
+
+Rootless Podman does not support `device_cgroup_rules` (container create fails) or
+Docker's `group_add: keep-groups` (Podman looks up a group named `keep-groups`).
+USB access relies on the bind mount and the devcontainer udev rule (`MODE="0666"`).
+Rootful Docker users who hit a device-cgroup deny on bind-mounted nodes may add
+`device_cgroup_rules: ["c 189:* rwm"]` to a personal
+[`.devcontainer/docker-compose.local.yaml`](../../.devcontainer/docker-compose.local.yaml)
+(gitignored).
 
 The libusb backend is installed on container create via
 [.devcontainer/scripts/post-create.sh](../../.devcontainer/scripts/post-create.sh).

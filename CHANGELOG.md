@@ -142,4 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **USB transport open on kernel-bound devices** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
   - Detach kernel driver before set_configuration; use pyusb util helpers for claim/release
 
+- **Devcontainer rebuild on rootless Podman** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - Removed `device_cgroup_rules` and `group_add: keep-groups` from shared compose overrides; rootless Podman rejects cgroup device rules and does not implement Docker's keep-groups
+
 ### Security

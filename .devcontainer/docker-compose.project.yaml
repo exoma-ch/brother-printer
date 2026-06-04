@@ -36,10 +36,9 @@ services:
     # Bind-mounts the whole /dev/bus/usb tree so replugged devices appear
     # without recreating the container. Rootless Podman remaps device nodes to
     # nobody:nogroup — use packaging/udev/99-brother-ptouch_devcontainer.rules
-    # on dev hosts (see docs/install/linux-usb.md).
+    # on dev hosts (see docs/install/linux-usb.md). Do not set device_cgroup_rules
+    # or group_add keep-groups here: rootless Podman rejects cgroup device rules
+    # and does not implement Docker's keep-groups. Rootful Docker users may add
+    # device_cgroup_rules: ["c 189:* rwm"] in docker-compose.local.yaml.
     volumes:
       - /dev/bus/usb:/dev/bus/usb
-    group_add:
-      - keep-groups
-    device_cgroup_rules:
-      - c 189:* rwm
