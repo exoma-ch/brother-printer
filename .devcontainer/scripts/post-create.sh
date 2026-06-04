@@ -25,12 +25,12 @@ fi
 # Set venv prompt
 sed -i 's/template-project/brother_printer/g' /root/assets/workspace/.venv/bin/activate
 
-# Console scripts (e.g. brother-printer) live in the pre-built venv but are not on PATH by default.
+# Console scripts (e.g. brother-ptouch-driver) live in the pre-built venv but are not on PATH by default.
 VENV_BIN="/root/assets/workspace/.venv/bin"
 if [[ -d "$VENV_BIN" ]] && ! grep -qF "$VENV_BIN" /root/.bashrc 2>/dev/null; then
     cat >> /root/.bashrc <<EOF
 
-# Project venv (brother-printer and other console scripts)
+# Project venv (brother-ptouch-driver and other console scripts)
 export PATH="${VENV_BIN}:\$PATH"
 EOF
 fi

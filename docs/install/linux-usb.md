@@ -15,17 +15,17 @@ sudo apt install libusb-1.0-0
 sudo dnf install libusb
 ```
 
-Install the Python package (includes the `brother-printer` CLI):
+Install the Python package (includes the `brother-ptouch-driver` CLI):
 
 ```bash
-uv sync
+uv sync --all-packages
 # or: pip install .
 ```
 
 Run the CLI via `uv run` (or activate the project venv first):
 
 ```bash
-uv run brother-printer --help
+uv run brother-ptouch-driver --help
 ```
 
 ## udev rules (non-root access)
@@ -49,7 +49,7 @@ sudo usermod -aG plugdev "$USER"
 Connect the PT-E920BT over USB, then:
 
 ```bash
-uv run brother-printer discover
+uv run brother-ptouch-driver discover
 ```
 
 Expected output (one line per printer):
@@ -68,11 +68,15 @@ or I/O). Configuration lives in
 ```yaml
 volumes:
   - /dev/bus/usb:/dev/bus/usb
-group_add:
-  - keep-groups
-device_cgroup_rules:
-  - c 189:* rwm
 ```
+
+Rootless Podman does not support `device_cgroup_rules` (container create fails) or
+Docker's `group_add: keep-groups` (Podman looks up a group named `keep-groups`).
+USB access relies on the bind mount and the devcontainer udev rule (`MODE="0666"`).
+Rootful Docker users who hit a device-cgroup deny on bind-mounted nodes may add
+`device_cgroup_rules: ["c 189:* rwm"]` to a personal
+[`.devcontainer/docker-compose.local.yaml`](../../.devcontainer/docker-compose.local.yaml)
+(gitignored).
 
 The libusb backend is installed on container create via
 [.devcontainer/scripts/post-create.sh](../../.devcontainer/scripts/post-create.sh).
@@ -126,7 +130,7 @@ uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
 test -d /dev/bus/usb && ls /dev/bus/usb
 
 # Library discovery
-uv run brother-printer discover
+uv run brother-ptouch-driver discover
 
 # Opt-in hardware tests (requires a connected printer)
 just test-hardware
@@ -151,7 +155,7 @@ likely `nobody:nogroup` with mode `0664` (container processes only get
 
 ### Permission denied
 
-If `uv run brother-printer discover` or transport open fails with a permission error,
+If `uv run brother-ptouch-driver discover` or transport open fails with a permission error,
 install the udev rule above and confirm group membership. The CLI error message
 includes a pointer to this document.
 

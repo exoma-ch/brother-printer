@@ -9,6 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Driver and text decoupling (uv workspace)** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `brother_printer_text` workspace package with `render_text`, `max_font_size`, and `print_text`
+  - `brother-label-text` CLI for text labels (`--font`, `--font-size`, `--align`, `--line-spacing`)
+  - `print_png(bytes)` entrypoint on the core library for PNG-at-the-edge callers
+  - ADR-0003 documents the split, strict image-height contract, and `--scale` behavior
+
+- **Direct text printing** ([#25](https://github.com/exoma-ch/brother-printer/issues/25))
+  - Multi-line labels with auto-fit font size (50px minimum), alignment, spacing, and baked-in rotation
+  - Text rotation renders full-length labels along the tape (90° matches 0°, 270° matches 180°) so long text is never cropped
+  - Hardware print matrix P4 for text labels; requires `pillow>=10.1` for scalable default font
+
+- **Text package rendering and CLI enhancements**
+  - Real 0°/90° rotation (`--rotate` flag); 180°/270° removed
+  - Per-edge margins (`--margin-top`, `--margin-bottom`, `--margin-left`, `--margin-right`) and `--width` fixed label width
+  - `brother-label-text` positional text argument; optional `--tape` with auto-detect from printer status
+  - `--output` / `-o` writes a PNG without printing; `detect_tape_width()` exported from `brother_printer_text`
+
+- **Text package golden-image tests and per-package test recipes** ([#9](https://github.com/exoma-ch/brother-printer/issues/9))
+  - Bundled DejaVuSans.ttf and committed PNG goldens for deterministic `render_text` regression tests
+  - `just test-core`, `just test-text`, and `just gen-text-images` for scoped test runs and fixture regeneration
+
+### Changed
+
+- **Package and CLI rename to brother-ptouch-***
+  - Workspace packages: `brother-ptouch-driver` (`import brother_ptouch_driver`) and `brother-ptouch-label` (`import brother_ptouch_label`)
+  - Console scripts: `brother-ptouch-driver`, `brother-ptouch-label` (replaces `brother-printer`, `brother-label-text`)
+  - Hardware tests opt-in via `BROTHER_PTOUCH_DRIVER_HARDWARE=1` (replaces `BROTHER_PRINTER_HARDWARE`)
+  - Just recipes: `just test-driver`, `just test-label` (replaces `just test-core`, `just test-text`)
+
+- **brother-label-text CLI and rotation behavior**
+  - Text is a positional argument (`--text` removed); `--tape` optional (auto-detect from printer status)
+  - `--rotate` toggles 90° across-tape layout; 180°/270° rotation removed
+  - Per-edge margin options and `--width` for fixed label length; `-o` renders PNG without printing
+
+- **Symmetric uv workspace layout** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - Core package and tests moved to `packages/brother_printer/`; repo root is a virtual workspace root
+  - Both workspace members now live under `packages/`; see ADR-0003
+
+- **Strict image height for printing** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `print_image` / `image_to_raster` require image height to match tape print area unless `scale=True` or `--scale`
+  - `scale=True` uses lossless integer nearest-neighbor when possible; non-integer factors resample
+  - Renamed `allow_distortion` to `scale` across library and CLI
+
+### Removed
+
+- **Text printing from core package** ([#3](https://github.com/exoma-ch/brother-printer/issues/3))
+  - `render_text`, `max_font_size`, and `print_text` no longer exported from `brother_printer`
+  - `brother-printer print --text` removed; use `brother-label-text` instead
+
 - **TESTING.md and consolidated hardware print matrix** ([#22](https://github.com/exoma-ch/brother-printer/issues/22))
   - Root `TESTING.md` documents run commands, suite layout, per-tape behavior, coverage gaps, and the P0–P3 hardware print matrix
   - All hardware tests under `tests/hardware/` with shared `conftest.py`; grayscale and distort fixtures via `just gen-test-images`
@@ -98,5 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **USB transport open on kernel-bound devices** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
   - Detach kernel driver before set_configuration; use pyusb util helpers for claim/release
+
+- **Devcontainer rebuild on rootless Podman** ([#4](https://github.com/exoma-ch/brother-printer/issues/4))
+  - Removed `device_cgroup_rules` and `group_add: keep-groups` from shared compose overrides; rootless Podman rejects cgroup device rules and does not implement Docker's keep-groups
 
 ### Security
