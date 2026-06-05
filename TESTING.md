@@ -154,5 +154,5 @@ these paths.
 
 ## TDD
 
-When adding features, follow [.cursor/rules/tdd.mdc](.cursor/rules/tdd.mdc): failing test
-first, minimal implementation, refactor.
+When adding features, follow the TDD workflow described in
+[CONTRIBUTING.md](CONTRIBUTING.md).
