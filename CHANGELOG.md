@@ -71,4 +71,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linux USB setup script** ([#10](https://github.com/exoma-ch/brother-printer/issues/10))
   - `packaging/scripts/setup-usb.sh` installs libusb, udev rules, and `plugdev` membership in one step
   - Runnable from a checkout or standalone via `curl`; `just setup-usb` recipe; `--devcontainer` flag for dev hosts
-
