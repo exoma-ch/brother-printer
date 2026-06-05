@@ -86,6 +86,36 @@ def test_to_monochrome_threshold_boundary():
     assert mono.getpixel((1, 0)) == 255
 
 
+def test_to_monochrome_from_mode_1_returns_copy():
+    """Mode '1' images pass through as a copy without re-thresholding."""
+    image = Image.new("1", (2, 1), 255)
+    pixels = image.load()
+    assert pixels is not None
+    pixels[0, 0] = 0
+    pixels[1, 0] = 255
+
+    mono = to_monochrome(image, threshold=128)
+
+    assert mono.mode == "1"
+    assert mono is not image
+    assert mono.getpixel((0, 0)) == 0
+    assert mono.getpixel((1, 0)) == 255
+
+
+def test_to_monochrome_from_palette_converts_to_1_bit():
+    """Palette and other modes convert through grayscale to strict 1-bit."""
+    image = Image.new("P", (1, 1))
+    image.putpalette([0, 0, 0, 255, 255, 255])
+    pixels = image.load()
+    assert pixels is not None
+    pixels[0, 0] = 0
+
+    mono = to_monochrome(image, threshold=128)
+
+    assert mono.mode == "1"
+    assert mono.getpixel((0, 0)) == 0
+
+
 def test_resize_to_tape_width_strict_rejects_wrong_height():
     """Strict mode rejects images whose height does not match the tape print area."""
     image = Image.new("1", (100, 100), 255)
@@ -142,6 +172,48 @@ def test_resize_to_tape_width_scale_non_integer_resamples():
 
     assert resized.size[1] == TapeWidth.MM_24.print_area_pins
     assert resized.getpixel((0, 0)) == 0
+
+
+def test_resize_to_tape_width_scale_integer_downscale():
+    """Integer nearest-neighbor downscale shrinks height to print area when scale=True."""
+    tape = TapeWidth.MM_3_5
+    image = Image.new("1", (100, 96), 255)
+
+    resized = resize_to_tape_width(image, tape, scale=True)
+
+    assert resized.size == (50, tape.print_area_pins)
+
+
+def test_resize_to_tape_width_scale_non_integer_downscale_resamples():
+    """scale=True resamples when downscaling height is not an integer factor."""
+    tape = TapeWidth.MM_3_5
+    image = Image.new("1", (100, 50), 255)
+    pixels = image.load()
+    assert pixels is not None
+    pixels[0, 0] = 0
+
+    resized = resize_to_tape_width(image, tape, scale=True)
+
+    expected_width = max(1, round(100 * tape.print_area_pins / 50))
+    assert resized.size == (expected_width, tape.print_area_pins)
+    assert resized.getpixel((0, 0)) == 0
+
+
+def test_resize_to_tape_width_rejects_zero_height():
+    """Zero-height images raise ImagingError before scaling."""
+    image = Image.new("1", (5, 0), 255)
+
+    with pytest.raises(ImagingError, match="height must be greater than zero"):
+        resize_to_tape_width(image, TapeWidth.MM_3_5, scale=True)
+
+
+def test_pack_raster_lines_requires_mode_1():
+    """pack_raster_lines rejects non-1-bit images."""
+    tape = TapeWidth.MM_3_5
+    image = Image.new("L", (2, tape.print_area_pins), 255)
+
+    with pytest.raises(ImagingError, match="expects mode '1'"):
+        pack_raster_lines(image, tape)
 
 
 def test_pack_raster_lines_emits_70_byte_lines():
