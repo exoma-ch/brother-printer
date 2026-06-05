@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.1.0] - TBD
+
+### Added
+
 - **Open-source PT-E920BT driver and CLI** ([#2](https://github.com/exoma-ch/brother-printer/issues/2), [#3](https://github.com/exoma-ch/brother-printer/issues/3))
   - Python implementation of the P-touch raster protocol from scratch; build-strategy and architecture ADRs under `docs/adr/`
   - Two-package uv workspace: `brother-ptouch-driver` (`import brother_ptouch_driver`) and `brother-ptouch-label` (`import brother_ptouch_label`)
@@ -71,3 +85,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linux USB setup script** ([#10](https://github.com/exoma-ch/brother-printer/issues/10))
   - `packaging/scripts/setup-usb.sh` installs libusb, udev rules, and `plugdev` membership in one step
   - Runnable from a checkout or standalone via `curl`; `just setup-usb` recipe; `--devcontainer` flag for dev hosts
+
