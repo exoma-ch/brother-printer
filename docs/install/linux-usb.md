@@ -3,6 +3,53 @@
 v0.1 targets Linux hosts with USB access to the Brother PT-E920BT. USB vendor
 identifiers are documented in [docs/vendor/usb-ids.md](../vendor/usb-ids.md).
 
+## Quick setup (script)
+
+From a repository checkout:
+
+```bash
+./packaging/scripts/setup-usb.sh        # or: just setup-usb
+```
+
+Standalone (no checkout — e.g. host setup before running a container):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/exoma-ch/brother-printer/main/packaging/scripts/setup-usb.sh | bash
+```
+
+### What the script does
+
+`setup-usb.sh` automates the manual steps documented below. In order, it:
+
+1. **Checks the platform** — exits early if not running on Linux, and resolves
+   `sudo` (or runs directly when already root).
+2. **Installs libusb** — detects your package manager (`apt`, `dnf`, `pacman`,
+   or `zypper`) and installs the libusb runtime that pyusb needs. Skip with
+   `--no-libusb` if it is already present.
+3. **Installs the udev rule** — copies the appropriate rule into
+   `/etc/udev/rules.d/`, then runs `udevadm control --reload` and
+   `udevadm trigger`. From a checkout it copies the local file; standalone it
+   downloads the rule from GitHub (override the ref with `--ref` or `REF=`).
+4. **Configures `plugdev`** — creates the group if needed and adds your user, so
+   non-root processes can open the device. Skipped for devcontainer mode.
+5. **Prints next steps** — replug the printer and verify with `discover`.
+
+### Options
+
+The script installs libusb, copies the udev rule, reloads udev, and adds your
+user to `plugdev`. For devcontainer hosts use `--devcontainer` (installs the
+`MODE="0666"` rule and skips `plugdev`). Because piping to `bash` cannot pass
+flags, download the script first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/exoma-ch/brother-printer/main/packaging/scripts/setup-usb.sh \
+  -o setup-usb.sh && bash setup-usb.sh --devcontainer
+```
+
+For the full flag reference, run `./packaging/scripts/setup-usb.sh --help` (or
+`just setup-usb -- --help`). The manual steps below remain canonical if you
+prefer to install piece by piece.
+
 ## Prerequisites
 
 Install the system libusb library (pyusb uses it via ctypes):
