@@ -12,7 +12,7 @@ from brother_ptouch_driver.imaging.raster import image_to_raster
 from brother_ptouch_driver.protocol.constants import RASTER_LINE_BYTES
 from brother_ptouch_driver.protocol.encoder import encode_job, raster_line
 from brother_ptouch_driver.protocol.enums import TapeWidth
-from brother_ptouch_label.text import max_font_size, render_text
+from brother_ptouch_label.text import _load_font, max_font_size, render_text
 
 _GOLDEN_DIR = Path(__file__).resolve().parent / "assets" / "golden"
 
@@ -132,6 +132,24 @@ def test_max_font_size_rejects_invalid_line_count(lines):
     """lines must be positive."""
     with pytest.raises(ValueError, match="lines"):
         max_font_size(TapeWidth.MM_24, lines)
+
+
+def test_max_font_size_rejects_invalid_rotate():
+    """Invalid rotation raises ValueError."""
+    with pytest.raises(ValueError, match="rotation"):
+        max_font_size(TapeWidth.MM_24, 1, rotate=45)
+
+
+def test_max_font_size_rejects_sample_length_mismatch():
+    """samples length must match lines."""
+    with pytest.raises(ValueError, match="samples length"):
+        max_font_size(TapeWidth.MM_24, 2, samples=["Ay"])
+
+
+def test_max_font_size_returns_one_when_nothing_fits():
+    """When fill_ratio leaves no room, return the minimum font size."""
+    size = max_font_size(TapeWidth.MM_24, 1, fill_ratio=0.0)
+    assert size == 1
 
 
 def test_max_font_size_rotate_90_fits_line_width():
@@ -348,6 +366,48 @@ def test_render_text_fixed_width_pads_short_label():
     assert image.height == tape.print_area_pins
 
 
+def test_render_text_fixed_width_equal_width_is_noop():
+    """fixed_width equal to natural width returns the same canvas size."""
+    tape = TapeWidth.MM_24
+    natural = render_text("Hi", tape, font_size=32)
+    exact = render_text("Hi", tape, font_size=32, fixed_width=natural.width)
+    assert exact.width == natural.width
+    assert exact.height == natural.height
+
+
+@pytest.mark.parametrize(
+    ("align", "relation"),
+    [
+        ("left", "less"),
+        ("right", "greater"),
+    ],
+)
+def test_render_text_fixed_width_align_shifts_ink(align, relation):
+    """fixed_width padding respects horizontal alignment."""
+    tape = TapeWidth.MM_24
+    natural = render_text("Hi", tape, font_size=32)
+    padded = render_text(
+        "Hi",
+        tape,
+        font_size=32,
+        fixed_width=natural.width + 120,
+        align=align,
+    )
+    assert padded.width == natural.width + 120
+    centroid = _ink_centroid_x(padded)
+    mid = padded.width / 2
+    if relation == "less":
+        assert centroid < mid - 20
+    else:
+        assert centroid > mid + 20
+
+
+def test_render_text_fixed_width_rejects_non_positive():
+    """fixed_width below 1 raises ImagingError."""
+    with pytest.raises(ImagingError, match="fixed_width must be at least 1"):
+        render_text("Hi", TapeWidth.MM_24, fixed_width=0)
+
+
 def test_render_text_fixed_width_rejects_overflow():
     """fixed_width raises when rendered content is wider than requested."""
     tape = TapeWidth.MM_24
@@ -366,6 +426,12 @@ def test_render_text_rejects_invalid_font_size(font_size):
     """font_size below 1 raises ValueError."""
     with pytest.raises(ValueError, match="font size"):
         render_text("Hi", TapeWidth.MM_24, font_size=font_size)
+
+
+def test_load_font_rejects_non_positive_size():
+    """_load_font rejects font sizes below 1."""
+    with pytest.raises(ValueError, match="font size"):
+        _load_font(None, 0)
 
 
 def test_render_text_rejects_missing_font_path():
