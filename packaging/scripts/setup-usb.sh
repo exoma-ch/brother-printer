@@ -161,7 +161,7 @@ install_udev_rule() {
         $SUDO cp "$source" "$dest"
     fi
 
-    $SUDO udevadm control --reload
+    $SUDO udevadm control --reload-rules
     $SUDO udevadm trigger
 }
 

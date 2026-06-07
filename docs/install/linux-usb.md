@@ -81,7 +81,7 @@ Copy the sample rule from this repository:
 
 ```bash
 sudo cp packaging/udev/99-brother-ptouch.rules /etc/udev/rules.d/
-sudo udevadm control --reload
+sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
@@ -136,7 +136,7 @@ The libusb backend is installed on container create via
 
    ```bash
    sudo cp packaging/udev/99-brother-ptouch_devcontainer.rules /etc/udev/rules.d/
-   sudo udevadm control --reload && sudo udevadm trigger
+   sudo udevadm control --reload-rules && sudo udevadm trigger
    ```
 
    Unplug and replug the printer. Confirm world-writable access on the host:
