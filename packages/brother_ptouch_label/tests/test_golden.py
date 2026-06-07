@@ -1,6 +1,6 @@
 """Golden-image regression tests for render_text.
 
-Committed ONGs under tests/assets/golden/ are compared byte-for-byte against
+Golden PNG files under tests/assets/golden/ are compared byte-for-byte against
 fresh renders using the bundled DejaVuSans.ttf. When rendering intentionally
 changes, regenerate fixtures::
 
