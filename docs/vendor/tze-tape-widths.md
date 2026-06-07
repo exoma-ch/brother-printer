@@ -89,4 +89,5 @@ reply reports a non-laminated media type, rather than silently falling back to f
 
 Brother has not published a PT-E920BT-specific Raster Command Reference. The tables
 above are taken from the PT-P900/P910BT manual because both families share the 560-pin /
-360 dpi print head per the PT-E920BT User's Guide. Validate against hardware in issue #5.
+360 dpi print head per the PT-E920BT User's Guide. The right-margin print-area pin
+offset used by `pack_raster_lines()` has been verified on PT-E920BT hardware.
