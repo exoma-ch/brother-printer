@@ -243,7 +243,7 @@ def test_pack_raster_lines_emits_70_byte_lines():
 
 
 def test_pack_raster_lines_uses_right_margin_offset():
-    """Print area is placed at the right-margin offset per Raster Command Reference §2.3.5."""
+    """Print area uses the right-margin offset (hardware-validated on PT-E920BT)."""
     tape = TapeWidth.MM_24
     right_pins = HEAD_PINS - tape.print_area_left_pins - tape.print_area_pins
     assert right_pins == 128

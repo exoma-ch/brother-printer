@@ -15,8 +15,9 @@ How to run the test suite, what it covers, and how hardware tests use tape.
 | `just gen-fixtures-driver` | Regenerates committed PNG fixtures under `packages/brother_ptouch_driver/tests/hardware/assets/`. |
 
 Hardware tests are gated by the `hardware` marker (registered in `pyproject.toml`) and
-`pytest.mark.skipif` on `BROTHER_PTOUCH_DRIVER_HARDWARE=1`. They never run during CI or a
-normal `just test` unless you opt in.
+`pytest.mark.skipif` when `BROTHER_PTOUCH_DRIVER_HARDWARE` is not set to `1`. They are
+skipped during CI and a normal `just test` unless you opt in with
+`BROTHER_PTOUCH_DRIVER_HARDWARE=1`.
 
 **Hardware prerequisites:** PT-E920BT connected over USB, passthrough into the
 devcontainer, udev permissions — see [docs/install/linux-usb.md](docs/install/linux-usb.md).
