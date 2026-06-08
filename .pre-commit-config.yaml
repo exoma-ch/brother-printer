@@ -65,7 +65,7 @@ repos:
       - id: pymarkdown
         name: pymarkdown
         args: ["-c", ".pymarkdown", "fix"]
-        exclude: ^(README\.md|CONTRIBUTE\.md|TESTING\.md)
+        exclude: ^(README\.md|CONTRIBUTING\.md|TESTING\.md|docs/vendor/(pt-e920bt-user-guide|ptouch-raster-command-reference)\.md)$
 
   # Justfile formatting
   - repo: local
@@ -82,3 +82,4 @@ repos:
     rev: 07d900b8fa1097806b8adb6391b0d3e0ac2fdea7  # v1.39.0
     hooks:
       - id: typos
+        exclude: ^docs/vendor/(pt-e920bt-user-guide|ptouch-raster-command-reference)\.md$

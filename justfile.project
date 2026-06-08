@@ -50,6 +50,49 @@ test *args:
 test-cov *args:
     uv run pytest --cov --cov-report=term-missing {{ args }}
 
+# Run opt-in hardware tests against a connected PT-E920BT (issue #4)
+[group('test')]
+test-hardware *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware {{ args }}
+
+# Run non-destructive hardware checks: connectivity + status, consumes no tape (issue #27)
+[group('test')]
+test-connect *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware \
+      packages/brother_ptouch_driver/tests/hardware/test_connectivity.py \
+      packages/brother_ptouch_driver/tests/hardware/test_status.py {{ args }}
+
+# Run the tape-consuming hardware print matrix (issue #27)
+[group('test')]
+test-print *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest -m hardware \
+      packages/brother_ptouch_driver/tests/hardware/test_print.py {{ args }}
+
+# Run the entire suite including opt-in hardware tests (issue #27)
+[group('test')]
+test-all *args:
+    BROTHER_PTOUCH_DRIVER_HARDWARE=1 uv run pytest {{ args }}
+
+# Regenerate label PNG fixtures for hardware print tests (issue #7, #27)
+[group('test')]
+gen-fixtures-driver:
+    uv run python packages/brother_ptouch_driver/tests/hardware/assets/generate_fixtures.py
+
+# Run brother-ptouch-driver package tests
+[group('test')]
+test-driver *args:
+    uv run pytest packages/brother_ptouch_driver/tests {{ args }}
+
+# Run brother-ptouch-label package tests
+[group('test')]
+test-label *args:
+    uv run pytest packages/brother_ptouch_label/tests {{ args }}
+
+# Regenerate golden render fixtures for the label package (issue #9)
+[group('test')]
+gen-fixtures-labels:
+    uv run python packages/brother_ptouch_label/tests/assets/generate_text_fixtures.py
+
 # -------------------------------------------------------------------------------
 # DEPENDENCIES
 # -------------------------------------------------------------------------------
@@ -57,7 +100,7 @@ test-cov *args:
 # Sync all dependencies (idempotent, fast if nothing changed)
 [group('deps')]
 sync:
-    @if [ -f pyproject.toml ]; then uv sync --all-extras --all-groups; fi
+    @if [ -f pyproject.toml ]; then uv sync --all-packages --all-extras --all-groups; fi
 
 # Update all dependencies
 [group('deps')]
@@ -74,6 +117,50 @@ update:
 clean-artifacts:
     rm -rf .pytest_cache .ruff_cache .coverage htmlcov dist build *.egg-info
     find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+# -------------------------------------------------------------------------------
+# CLI
+# -------------------------------------------------------------------------------
+
+alias d := discover
+alias ps := printer-status
+alias t := tapes
+alias p := print
+alias l := label
+
+# List connected PT-E920BT printers over USB
+[group('cli')]
+discover *args:
+    uv run brother-ptouch-driver discover {{ args }}
+
+# Show live printer status (loaded tape, errors)
+[group('cli')]
+printer-status *args:
+    uv run brother-ptouch-driver status {{ args }}
+
+# List supported tape widths and printable pixel dimensions
+[group('cli')]
+tapes *args:
+    uv run brother-ptouch-driver info tapes {{ args }}
+
+# Print an image label, e.g. `just print qr.png --tape 12mm`
+[group('cli')]
+print *args:
+    uv run brother-ptouch-driver print {{ args }}
+
+# Print a text label, e.g. `just label "Hello" --tape 12mm`
+[group('cli')]
+label *args:
+    uv run brother-ptouch-label {{ args }}
+
+# -------------------------------------------------------------------------------
+# SETUP
+# -------------------------------------------------------------------------------
+
+# Install libusb + udev rule and grant non-root USB access (Linux)
+[group('setup')]
+setup-usb *args:
+    ./packaging/scripts/setup-usb.sh {{ args }}
 
 # ===============================================================================
 # PROJECT-SPECIFIC RECIPES

@@ -1,0 +1,11 @@
+# Brother P-touch USB — devcontainer / rootless Podman (local dev only)
+#
+# Rootless Podman remaps bind-mounted USB nodes to nobody:nogroup; mode 0664
+# leaves container processes with read-only "other" access. Use this rule on
+# development hosts where the PT-E920BT is passed into a devcontainer.
+#
+# Filename uses "_" after "ptouch" so this rule sorts AFTER
+# 99-brother-ptouch.rules and overrides MODE for dev hosts that install both.
+#
+# Do not deploy on production or shared machines.
+SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", MODE="0666", TAG+="uaccess"

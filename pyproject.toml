@@ -1,21 +1,25 @@
-[project]
-name = "brother_printer"
-version = "0.1.0"
-description = "brother_printer project"
-requires-python = ">=3.12"
-dependencies = []
+[tool.uv.workspace]
+members = ["packages/*"]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-cov>=4.0", "ipykernel>=6.0", "jupyter>=1.0"]
-science = ["numpy>=2.0", "scipy>=1.14", "pandas>=2.2", "matplotlib>=3.9"]
-all = ["brother_printer[dev,science]"]
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/brother_ptouch_driver/tests",
+    "packages/brother_ptouch_label/tests",
+]
+markers = [
+    "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PTOUCH_DRIVER_HARDWARE=1)",
+]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/brother_printer"]
+[tool.coverage.run]
+source = [
+    "packages/brother_ptouch_driver/src",
+    "packages/brother_ptouch_label/src",
+]
 
 [dependency-groups]
-dev = ["hatchling>=1.25", "rich>=13.0.0"]
+dev = [
+    "hatchling>=1.25",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "rich>=13.0.0",
+]

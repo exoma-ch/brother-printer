@@ -1,0 +1,2 @@
+# Brother P-touch USB devices — non-root access on Linux
+SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", MODE="0664", GROUP="plugdev", TAG+="uaccess"
