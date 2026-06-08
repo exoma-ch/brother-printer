@@ -17,7 +17,7 @@ from brother_ptouch_driver.transport.usb import (
 def _make_device(
     *,
     vendor_id: int = BROTHER_VID,
-    product_id: int = 0x20C7,
+    product_id: int = 0x224B,
     product: str = PT_E920BT_PRODUCT_STRING,
     serial: str | None = "000123456789",
     bus: int = 1,
@@ -63,12 +63,12 @@ def test_discover_finds_pt_e920bt(mock_find, mock_get_string):
     assert len(printers) == 1
     info = printers[0]
     assert info.vendor_id == BROTHER_VID
-    assert info.product_id == 0x20C7
+    assert info.product_id == 0x224B
     assert info.product == PT_E920BT_PRODUCT_STRING
     assert info.serial == "000123456789"
     assert info.bus == 1
     assert info.address == 5
-    assert info.identifier == "04f9:20c7#000123456789"
+    assert info.identifier == "04f9:224b#000123456789"
 
 
 @patch("brother_ptouch_driver.transport.usb.usb.util.get_string")
@@ -138,4 +138,4 @@ def test_discover_returns_printer_info_instances(mock_find, mock_get_string):
 
     assert len(printers) == 1
     assert isinstance(printers[0], PrinterInfo)
-    assert printers[0].identifier == "04f9:20c7#3:9"
+    assert printers[0].identifier == "04f9:224b#3:9"

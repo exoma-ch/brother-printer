@@ -8,4 +8,4 @@
 # 99-brother-ptouch.rules and overrides MODE for dev hosts that install both.
 #
 # Do not deploy on production or shared machines.
-SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", MODE="0666", TAG+="uaccess"

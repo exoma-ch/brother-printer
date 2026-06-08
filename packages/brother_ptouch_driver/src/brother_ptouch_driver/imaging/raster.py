@@ -117,6 +117,7 @@ def pack_raster_lines(image: Image.Image, tape_width: TapeWidth) -> list[bytes]:
         line = bytearray(RASTER_LINE_BYTES)
         for row in range(height):
             if pixels[column, row] == 0:
+                # Right-margin offset per Raster Command Reference §2.3.5; hardware-validated.
                 _set_pin(line, right_pins + row)
         lines.append(bytes(line))
     return lines
