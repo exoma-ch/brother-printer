@@ -5,6 +5,7 @@ members = ["packages/*"]
 testpaths = [
     "packages/brother_ptouch_driver/tests",
     "packages/brother_ptouch_label/tests",
+    "packaging/tests",
 ]
 markers = [
     "hardware: requires a physically connected PT-E920BT (opt-in via BROTHER_PTOUCH_DRIVER_HARDWARE=1)",
