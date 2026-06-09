@@ -12,7 +12,7 @@ set -euo pipefail
 
 readonly REPO="exoma-ch/brother-printer"
 readonly DEFAULT_REF="${REF:-main}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 readonly SCRIPT_DIR
 readonly UDEV_DIR="/etc/udev/rules.d"
 
