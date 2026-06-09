@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 CACHE_DIR="${SCRIPT_DIR}/cache"
 mkdir -p "${CACHE_DIR}"
 

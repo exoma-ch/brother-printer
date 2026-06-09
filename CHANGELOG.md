@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`setup-usb.sh` crash on `curl | bash` install** ([#37](https://github.com/exoma-ch/brother-printer/issues/37))
+  - Guard `${BASH_SOURCE[0]}` with a `$0` default so the documented piped install no longer prints `BASH_SOURCE[0]: unbound variable` under `set -u`
+  - Apply the same hardening to the vendor and devcontainer helper scripts
+
 ### Security
 
 ## [0.1.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.1.0) - 2026-06-08
