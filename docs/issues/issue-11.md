@@ -1,19 +1,19 @@
 ---
 type: issue
-state: open
+state: closed
 created: 2026-05-28T15:21:12Z
-updated: 2026-05-28T15:21:12Z
+updated: 2026-06-08T07:37:38Z
 author: c-vigo
 author_url: https://github.com/c-vigo
 url: https://github.com/exoma-ch/brother-printer/issues/11
-comments: 0
+comments: 1
 labels: discussion, priority:high, effort:large
 assignees: none
 milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-06-06T05:55:50.406Z
+synced: 2026-06-09T06:11:06.301Z
 ---
 
 # [Issue 11]: [[DISCUSSION] v0.1 roadmap: USB CLI printing for PT-E920BT](https://github.com/exoma-ch/brother-printer/issues/11)
@@ -67,20 +67,20 @@ flowchart TB
 ## Child Issues (execution order)
 
 ### Phase 1 — Research & design
-- [ ] #1 — Collect official PT-E920BT documentation
-- [ ] #2 — Prior-art deep-dive and build-strategy ADR
-- [ ] #3 — Architecture ADR and package skeleton
+- [x] #1 — Collect official PT-E920BT documentation
+- [x] #2 — Prior-art deep-dive and build-strategy ADR
+- [x] #3 — Architecture ADR and package skeleton
 
 ### Phase 2 — Core implementation
-- [ ] #4 — USB transport layer with discover
-- [ ] #5 — P-touch raster protocol encoder and status decoder
-- [ ] #6 — Image-to-raster pipeline for QR quality
-- [ ] #9 — Loopback transport and golden-file tests *(can start in parallel with #5/#6)*
+- [x] #4 — USB transport layer with discover
+- [x] #5 — P-touch raster protocol encoder and status decoder
+- [x] #6 — Image-to-raster pipeline for QR quality
+- [x] #9 — Loopback transport and golden-file tests *(can start in parallel with #5/#6)*
 
 ### Phase 3 — CLI & release
-- [ ] #7 — CLI print command
-- [ ] #8 — CLI status and info tapes commands
-- [ ] #10 — v0.1.0 release prep
+- [x] #7 — CLI print command
+- [x] #8 — CLI status and info tapes commands
+- [x] #10 — v0.1.0 release prep
 
 ## Open Questions
 
@@ -90,4 +90,13 @@ flowchart TB
 ## v0.2 Preview (not in scope)
 
 Local web service accepting print jobs via HTTP, reusing the same library API built in v0.1.
+
+
+---
+
+# [Comment #1]() by [c-vigo]()
+
+_Posted on June 8, 2026 at 07:37 AM_
+
+v0.1.0 released: GitHub Release published and PR #34 merged to main (tag 0.1.0). All child issues (#1-#10, plus #19, #21, #22, #25, #31) are closed. Roadmap epic complete.
 
