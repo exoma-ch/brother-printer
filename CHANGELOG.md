@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`status` crash on "no tape" and unrecognised media/colour bytes** ([#39](https://github.com/exoma-ch/brother-printer/issues/39))
+  - Add `TapeColor.NO_TAPE` (`0x00`) and the documented extended-palette colours, plus `MediaType.SELF_LAMINATING` (`0x16`, field-reported on self-laminating 24/36 mm tape)
+  - Decode undocumented media/colour bytes to the raw value (rendered as `unknown (0xNN)`) instead of raising, so querying status never crashes; `NO_TAPE` renders as `No tape`
 - **`setup-usb.sh` crash on `curl | bash` install** ([#37](https://github.com/exoma-ch/brother-printer/issues/37))
   - Guard `${BASH_SOURCE[0]}` with a `$0` default so the documented piped install no longer prints `BASH_SOURCE[0]: unbound variable` under `set -u`
   - Apply the same hardening to the vendor and devcontainer helper scripts

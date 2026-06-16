@@ -53,3 +53,52 @@ def test_render_status_shows_no_tape_when_width_missing():
     )
     output = render_status(_sample_printer(), status)
     assert "Tape:       No tape" in output
+
+
+def test_render_status_shows_no_tape_color():
+    """render_status() renders the NO_TAPE colour as 'No tape'."""
+    status = PrinterStatus(
+        media_width=None,
+        media_type=MediaType.NO_MEDIA,
+        errors=(),
+        status_type=StatusType.REPLY,
+        phase_type=PhaseType.EDITING,
+        phase_number=0,
+        notification=Notification.NOT_AVAILABLE,
+        tape_color=TapeColor.NO_TAPE,
+    )
+    output = render_status(_sample_printer(), status)
+    assert "Color:      No tape" in output
+
+
+def test_render_status_self_laminating_media():
+    """render_status() renders the self-laminating media type with a friendly name."""
+    status = PrinterStatus(
+        media_width=TapeWidth.MM_24,
+        media_type=MediaType.SELF_LAMINATING,
+        errors=(),
+        status_type=StatusType.REPLY,
+        phase_type=PhaseType.EDITING,
+        phase_number=0,
+        notification=Notification.NOT_AVAILABLE,
+        tape_color=TapeColor.WHITE,
+    )
+    output = render_status(_sample_printer(), status)
+    assert "Media:      Self Laminating" in output
+
+
+def test_render_status_unknown_bytes_degrade_gracefully():
+    """render_status() shows undocumented media/colour bytes as 'unknown (0xNN)'."""
+    status = PrinterStatus(
+        media_width=TapeWidth.MM_24,
+        media_type=0x99,
+        errors=(),
+        status_type=StatusType.REPLY,
+        phase_type=PhaseType.EDITING,
+        phase_number=0,
+        notification=Notification.NOT_AVAILABLE,
+        tape_color=0xAB,
+    )
+    output = render_status(_sample_printer(), status)
+    assert "Media:      unknown (0x99)" in output
+    assert "Color:      unknown (0xab)" in output
