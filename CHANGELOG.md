@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`brother-ptouch-label --replicate N` (alias `--repeat`) for cable-wrap "flag" labels** ([#45](https://github.com/exoma-ch/brother-printer/issues/45))
   - Repeats the text `N` times along the axis perpendicular to its reading direction, so a single label stays legible when wrapped around a cable (useful with flexible-ID TZe-FX tapes)
   - Without `--rotate`, copies stack across the tape width and each is auto-fitted to `print_area_pins / N`; with `--rotate`, copies repeat along the feed axis at full width
+  - Accepts `--replicate auto` to fit as many copies as the tape and font size allow (needs `--font-size`, plus `--width` when combined with `--rotate`)
   - Defaults to `1` (no replication), so existing renders are unchanged
 
 ### Changed

@@ -333,6 +333,50 @@ def test_render_text_rejects_invalid_replicate(replicate):
         render_text("Hi", TapeWidth.MM_24, replicate=replicate)
 
 
+def test_render_text_replicate_auto_fills_tape_width():
+    """auto fits multiple copies of a fixed-size font across the tape width."""
+    tape = TapeWidth.MM_24
+    single = render_text("Flex ID", tape, font_size=40)
+    filled = render_text("Flex ID", tape, font_size=40, replicate="auto")
+    assert filled.height == tape.print_area_pins
+    # at least two copies fit, so noticeably more ink than a single render
+    assert _ink_pixel_count(filled) >= 2 * _ink_pixel_count(single)
+
+
+def test_render_text_replicate_auto_requires_font_size():
+    """auto without an explicit font size raises a clear error."""
+    with pytest.raises(ImagingError, match="font_size"):
+        render_text("Hi", TapeWidth.MM_24, replicate="auto")
+
+
+def test_render_text_replicate_auto_rotate_requires_width():
+    """auto with rotation needs a bounded feed axis (fixed_width)."""
+    with pytest.raises(ImagingError, match="fixed_width"):
+        render_text("Hi", TapeWidth.MM_24, rotate=90, font_size=24, replicate="auto")
+
+
+def test_render_text_replicate_auto_rotate_fills_width():
+    """auto with rotation tiles copies along the feed up to fixed_width."""
+    tape = TapeWidth.MM_24
+    single = render_text("Hi", tape, rotate=90, font_size=24)
+    filled = render_text(
+        "Hi",
+        tape,
+        rotate=90,
+        font_size=24,
+        replicate="auto",
+        fixed_width=single.width * 3,
+    )
+    assert filled.width == single.width * 3
+    assert _ink_pixel_count(filled) >= 2 * _ink_pixel_count(single)
+
+
+def test_render_text_rejects_unknown_replicate_string():
+    """A non-numeric, non-auto replicate value raises ImagingError."""
+    with pytest.raises(ImagingError, match="replicate"):
+        render_text("Hi", TapeWidth.MM_24, font_size=20, replicate="seventeen")
+
+
 def test_render_text_default_caps_font_size(golden_font: Path) -> None:
     """Default font size is capped at 48px on wide tape (matches golden)."""
     expected_path = _GOLDEN_DIR / "default_cap_36mm.png"

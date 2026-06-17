@@ -29,6 +29,34 @@ def _resolve_tape(tape: str | None, *, printer: str | None) -> TapeWidth:
     return detect_tape_width(printer=printer)
 
 
+class _ReplicateType(click.ParamType):
+    """Accept a positive integer copy count or the literal ``auto``."""
+
+    name = "count"
+
+    def convert(
+        self,
+        value: object,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> int | str:
+        if isinstance(value, int):
+            return value
+        text = str(value).strip().lower()
+        if text in {"auto", "fill", "max"}:
+            return "auto"
+        try:
+            count = int(text)
+        except ValueError:
+            self.fail(f"{value!r} is not a positive integer or 'auto'", param, ctx)
+        if count < 1:
+            self.fail("must be at least 1", param, ctx)
+        return count
+
+
+_REPLICATE = _ReplicateType()
+
+
 def _resolve_margins(
     margin: int,
     margin_top: int | None,
@@ -119,13 +147,15 @@ def _resolve_margins(
     "--replicate",
     "--repeat",
     "replicate",
-    type=click.IntRange(min=1),
+    type=_REPLICATE,
     default=1,
     show_default=True,
     help=(
         "Repeat the text N times perpendicular to its reading direction "
         "(across the tape width, or along the feed with --rotate) so a single "
-        "label stays legible when wrapped around a cable."
+        "label stays legible when wrapped around a cable. Use a count or 'auto' "
+        "to fit as many copies as the tape and font size allow "
+        "(auto needs --font-size, and --width when combined with --rotate)."
     ),
 )
 @click.option(
@@ -160,7 +190,7 @@ def main(
     margin_left: int | None,
     margin_right: int | None,
     fixed_width: int | None,
-    replicate: int,
+    replicate: int | str,
     output: Path | None,
     printer: str | None,
 ) -> None:

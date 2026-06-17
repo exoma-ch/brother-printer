@@ -103,6 +103,28 @@ def test_cli_replicate_option_forwarded(mock_print_text):
 
 
 @patch("brother_ptouch_label.cli.main.print_text")
+def test_cli_replicate_auto_forwarded(mock_print_text):
+    """--replicate auto is forwarded as the string 'auto'."""
+    mock_print_text.return_value = 1
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["Hi", "--tape", "24mm", "--font-size", "40", "--replicate", "auto"]
+    )
+    assert result.exit_code == 0
+    assert mock_print_text.call_args.kwargs["replicate"] == "auto"
+
+
+@patch("brother_ptouch_label.cli.main.print_text")
+def test_cli_replicate_rejects_invalid_value(mock_print_text):
+    """A non-numeric, non-auto --replicate value is rejected by the CLI."""
+    mock_print_text.return_value = 1
+    runner = CliRunner()
+    result = runner.invoke(main, ["Hi", "--tape", "24mm", "--replicate", "nope"])
+    assert result.exit_code != 0
+    mock_print_text.assert_not_called()
+
+
+@patch("brother_ptouch_label.cli.main.print_text")
 def test_cli_repeat_alias_forwarded(mock_print_text):
     """The --repeat alias maps to the same replicate option."""
     mock_print_text.return_value = 1

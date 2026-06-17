@@ -133,6 +133,9 @@ brother-ptouch-label "Line 1\nLine 2" --rotate --tape 24mm
 # Repeat the text across the tape for a cable-wrap "flag" label
 brother-ptouch-label "PWR-01" --tape 24mm --replicate 3
 
+# Fill the tape with as many copies as fit at a given font size
+brother-ptouch-label "PWR-01" --tape 24mm --font-size 40 --replicate auto
+
 # Render a label to PNG without printing
 brother-ptouch-label "Preview" -o label.png --tape 12mm
 ```

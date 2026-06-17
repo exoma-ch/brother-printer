@@ -14,6 +14,7 @@ _MAX_DEFAULT_FONT_SIZE = 48
 _METRICS_SAMPLE = "Ay"
 _VALID_ROTATIONS = frozenset({0, 90})
 _VALID_ALIGNS = frozenset({"left", "center", "right"})
+_AUTO_REPLICATE = frozenset({"auto", "fill", "max"})
 
 
 @dataclass(frozen=True)
@@ -439,6 +440,54 @@ def _render_replicated_rotated(
     return _tile_horizontal(unit, replicate)
 
 
+def _resolve_replicate(
+    replicate: int | str,
+    line_list: list[str],
+    tape_width: TapeWidth,
+    *,
+    rotate: int,
+    font_path: str | None,
+    font_size: int | None,
+    line_spacing: float,
+    margins: _Margins,
+    fixed_width: int | None,
+) -> int:
+    """Resolve an explicit copy count or an ``"auto"`` fill request to an int."""
+    if not isinstance(replicate, str):
+        if replicate < 1:
+            msg = "replicate must be at least 1"
+            raise ImagingError(msg)
+        return replicate
+
+    if replicate.strip().lower() not in _AUTO_REPLICATE:
+        msg = f"replicate must be a positive integer or 'auto', got {replicate!r}"
+        raise ImagingError(msg)
+    if font_size is None:
+        msg = "automatic replication requires an explicit font_size"
+        raise ImagingError(msg)
+
+    font = _load_font(font_path, font_size)
+    if rotate == 0:
+        per_copy = (
+            _block_height(font, len(line_list), line_spacing=line_spacing)
+            + margins.vertical
+        )
+        return max(1, tape_width.print_area_pins // max(1, per_copy))
+
+    if fixed_width is None:
+        msg = "automatic replication with rotation requires fixed_width"
+        raise ImagingError(msg)
+    unit = _render_rotated_90(
+        line_list,
+        tape_width,
+        font,
+        align="center",
+        line_spacing=line_spacing,
+        margins=margins,
+    )
+    return max(1, fixed_width // max(1, unit.width))
+
+
 def render_text(
     text: str,
     tape_width: TapeWidth,
@@ -454,7 +503,7 @@ def render_text(
     margin_left: int | None = None,
     margin_right: int | None = None,
     fixed_width: int | None = None,
-    replicate: int = 1,
+    replicate: int | str = 1,
     fill_ratio: float = _DEFAULT_FILL_RATIO,
 ) -> Image.Image:
     """Render multi-line text to a grayscale image sized for the tape width.
@@ -464,6 +513,10 @@ def render_text(
     wrapped around a cable. Without ``rotate`` the copies stack across the tape
     width (so each shrinks to fit ``print_area_pins / replicate``); with
     ``rotate=90`` the copies repeat along the feed axis at full width.
+
+    Pass ``replicate="auto"`` to fit as many copies as the tape and font allow
+    (requires an explicit ``font_size``; the rotated variant also needs
+    ``fixed_width`` to bound the feed axis).
     """
     if not text.strip() or all(not line.strip() for line in text.split("\n")):
         msg = "text must not be empty"
@@ -477,9 +530,6 @@ def render_text(
     if fixed_width is not None and fixed_width < 1:
         msg = "fixed_width must be at least 1"
         raise ImagingError(msg)
-    if replicate < 1:
-        msg = "replicate must be at least 1"
-        raise ImagingError(msg)
 
     margins = _resolve_margins(
         margin=margin,
@@ -490,6 +540,17 @@ def render_text(
     )
 
     line_list = text.split("\n")
+    replicate_count = _resolve_replicate(
+        replicate,
+        line_list,
+        tape_width,
+        rotate=rotate,
+        font_path=font_path,
+        font_size=font_size,
+        line_spacing=line_spacing,
+        margins=margins,
+        fixed_width=fixed_width,
+    )
     replicate_kwargs = {
         "font_path": font_path,
         "font_size": font_size,
@@ -501,11 +562,11 @@ def render_text(
 
     if rotate == 0:
         image = _render_replicated_horizontal(
-            line_list, tape_width, replicate, **replicate_kwargs
+            line_list, tape_width, replicate_count, **replicate_kwargs
         )
     else:
         image = _render_replicated_rotated(
-            line_list, tape_width, replicate, **replicate_kwargs
+            line_list, tape_width, replicate_count, **replicate_kwargs
         )
 
     if fixed_width is not None:
