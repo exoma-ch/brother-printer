@@ -6,6 +6,7 @@ from brother_ptouch_driver.protocol.enums import (
     ErrorInfo1,
     ErrorInfo2,
     MediaType,
+    TapeColor,
     TapeWidth,
     decode_error_messages,
 )
@@ -44,6 +45,21 @@ def test_media_type_values():
     assert MediaType.LAMINATED == 0x01
     assert MediaType.NON_LAMINATED == 0x03
     assert MediaType.INCOMPATIBLE == 0xFF
+
+
+def test_media_type_self_laminating():
+    """MediaType includes the field-reported self-laminating byte (issue #39)."""
+    assert MediaType.SELF_LAMINATING == 0x16
+
+
+def test_tape_color_values():
+    """TapeColor covers no-tape and documented extended-palette bytes (table 8)."""
+    assert TapeColor.NO_TAPE == 0x00
+    assert TapeColor.WHITE == 0x01
+    assert TapeColor.MATTE_SILVER == 0x22
+    assert TapeColor.FLUORESCENT_ORANGE == 0x40
+    assert TapeColor.WHITE_FLEX_ID == 0x90
+    assert TapeColor.INCOMPATIBLE == 0xFF
 
 
 def test_decode_error_messages():

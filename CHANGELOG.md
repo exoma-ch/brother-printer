@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+- **`status` crash on "no tape" and unrecognised media/colour bytes** ([#39](https://github.com/exoma-ch/brother-printer/issues/39))
+  - Add `TapeColor.NO_TAPE` (`0x00`) and the documented extended-palette colours, plus `MediaType.SELF_LAMINATING` (`0x16`, field-reported on self-laminating 24/36 mm tape)
+  - Decode undocumented media/colour bytes to the raw value (rendered as `unknown (0xNN)`) instead of raising, so querying status never crashes; `NO_TAPE` renders as `No tape`
+  - Add `TapeColor.WHITE_SELF_LAMINATING` (`0x80`, field-reported on white self-laminating tape such as TZe-SL251; the plain laminated TZe-S251 reports `WHITE` on the same printer)
+  - Render colours whose name repeats the cartridge type (heat-shrink, self-laminating, flexible ID — e.g. `WHITE_FLEX_ID`/TZe-FX251) as just the colour (`White`), since the cartridge type already appears on the Media line
+- **`setup-usb.sh` crash on `curl | bash` install** ([#37](https://github.com/exoma-ch/brother-printer/issues/37))
+  - Guard `${BASH_SOURCE[0]}` with a `$0` default so the documented piped install no longer prints `BASH_SOURCE[0]: unbound variable` under `set -u`
+  - Apply the same hardening to the vendor and devcontainer helper scripts
+
+### Security
+
 ## [0.1.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.1.0) - 2026-06-08
 
 ### Added

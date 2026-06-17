@@ -88,6 +88,33 @@ def test_decode_status_no_media():
     assert status.media_type == MediaType.NO_MEDIA
 
 
+def test_decode_status_no_tape_color():
+    """decode_status() maps tape-colour byte 0x00 to NO_TAPE instead of crashing."""
+    status = decode_status(_build_status(media_width=0x00, tape_color=0x00))
+    assert status.tape_color == TapeColor.NO_TAPE
+
+
+def test_decode_status_self_laminating_media():
+    """decode_status() recognises the field-reported self-laminating media byte."""
+    status = decode_status(_build_status(media_type=0x16))
+    assert status.media_type == MediaType.SELF_LAMINATING
+
+
+def test_decode_status_white_self_laminating_color():
+    """decode_status() recognises the field-reported self-laminating white byte."""
+    status = decode_status(_build_status(tape_color=0x80))
+    assert status.tape_color == TapeColor.WHITE_SELF_LAMINATING
+
+
+def test_decode_status_unknown_bytes_degrade_to_raw_int():
+    """Undocumented media/colour bytes return the raw int rather than raising."""
+    status = decode_status(_build_status(media_type=0x99, tape_color=0xAB))
+    assert status.media_type == 0x99
+    assert not isinstance(status.media_type, MediaType)
+    assert status.tape_color == 0xAB
+    assert not isinstance(status.tape_color, TapeColor)
+
+
 def test_decode_status_errors():
     """decode_status() decodes error bitmask bytes to readable messages."""
     status = decode_status(_build_status(error1=0x01, error2=0x10))

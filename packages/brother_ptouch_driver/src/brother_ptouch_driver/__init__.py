@@ -13,7 +13,7 @@ from brother_ptouch_driver.printing import (
     select_printer,
 )
 from brother_ptouch_driver.protocol.decoder import PrinterStatus
-from brother_ptouch_driver.protocol.enums import TapeWidth
+from brother_ptouch_driver.protocol.enums import TapeColor, TapeWidth
 from brother_ptouch_driver.transport import PrinterInfo, discover
 from brother_ptouch_driver.transport.errors import (
     DeviceBusyError,
@@ -38,6 +38,7 @@ __all__ = [
     "PrinterInfo",
     "PrinterNotReadyError",
     "PrinterStatus",
+    "TapeColor",
     "TapeMismatchError",
     "TapeWidth",
     "TransportError",

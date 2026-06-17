@@ -37,13 +37,13 @@ class PrinterStatus:
     """Parsed 32-byte status reply from the printer."""
 
     media_width: TapeWidth | None
-    media_type: MediaType
+    media_type: MediaType | int
     errors: tuple[str, ...]
-    status_type: StatusType
-    phase_type: PhaseType
+    status_type: StatusType | int
+    phase_type: PhaseType | int
     phase_number: int
-    notification: Notification
-    tape_color: TapeColor
+    notification: Notification | int
+    tape_color: TapeColor | int
 
 
 def extract_status_reply(data: bytes) -> bytes:
@@ -75,19 +75,23 @@ def decode_status(data: bytes) -> PrinterStatus:
 
     return PrinterStatus(
         media_width=TapeWidth.from_byte(width_byte),
-        media_type=_enum_from_byte(MediaType, media_type_byte, "media type"),
+        media_type=_enum_from_byte(MediaType, media_type_byte),
         errors=decode_error_messages(error1, error2),
-        status_type=_enum_from_byte(StatusType, status_type_byte, "status type"),
-        phase_type=_enum_from_byte(PhaseType, phase_type_byte, "phase type"),
+        status_type=_enum_from_byte(StatusType, status_type_byte),
+        phase_type=_enum_from_byte(PhaseType, phase_type_byte),
         phase_number=phase_number,
-        notification=_enum_from_byte(Notification, notification_byte, "notification"),
-        tape_color=_enum_from_byte(TapeColor, tape_color_byte, "tape color"),
+        notification=_enum_from_byte(Notification, notification_byte),
+        tape_color=_enum_from_byte(TapeColor, tape_color_byte),
     )
 
 
-def _enum_from_byte(enum_cls: type[IntEnum], value: int, label: str) -> IntEnum:
+def _enum_from_byte(enum_cls: type[IntEnum], value: int) -> IntEnum | int:
+    """Map a status byte to its enum member, or the raw byte if undocumented.
+
+    Status queries must never crash on an unrecognised byte (issue #39); the raw
+    int is returned for diagnostics and rendered as ``unknown (0xNN)``.
+    """
     try:
         return enum_cls(value)
-    except ValueError as exc:
-        msg = f"unknown {label} byte: 0x{value:02x}"
-        raise ValueError(msg) from exc
+    except ValueError:
+        return value

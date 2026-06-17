@@ -85,6 +85,9 @@ class MediaType(IntEnum):
     FILE_TAPE = 0x13
     FLEXIBLE_ID = 0x14
     SATIN = 0x15
+    # Not in Brother's published P900 table; reported by hardware in the field
+    # (self-laminating 24/36 mm tape). See issue #39.
+    SELF_LAMINATING = 0x16
     HEAT_SHRINK_3_1 = 0x17
     INCOMPATIBLE = 0xFF
 
@@ -92,6 +95,7 @@ class MediaType(IntEnum):
 class TapeColor(IntEnum):
     """Tape color information byte (status reply table 8)."""
 
+    NO_TAPE = 0x00
     WHITE = 0x01
     OTHER = 0x02
     CLEAR = 0x03
@@ -100,6 +104,32 @@ class TapeColor(IntEnum):
     YELLOW = 0x06
     GREEN = 0x07
     BLACK = 0x08
+    CLEAR_WHITE_TEXT = 0x09
+    MATTE_WHITE = 0x20
+    MATTE_CLEAR = 0x21
+    MATTE_SILVER = 0x22
+    SATIN_GOLD = 0x23
+    SATIN_SILVER = 0x24
+    BLUE_D = 0x30
+    RED_D = 0x31
+    FLUORESCENT_ORANGE = 0x40
+    FLUORESCENT_YELLOW = 0x41
+    BERRY_PINK_S = 0x50
+    LIGHT_GRAY_S = 0x51
+    LIME_GREEN_S = 0x52
+    YELLOW_F = 0x60
+    PINK_F = 0x61
+    BLUE_F = 0x62
+    WHITE_HEAT_SHRINK = 0x70
+    # Not in Brother's published colour table; reported by hardware in the field
+    # for white self-laminating tape (TZe-SL251). The plain laminated white
+    # tape (TZe-S251) reports WHITE (0x01) on the same printer, so 0x80 is the
+    # self-laminating variant. See issue #39.
+    WHITE_SELF_LAMINATING = 0x80
+    WHITE_FLEX_ID = 0x90
+    YELLOW_FLEX_ID = 0x91
+    CLEANING = 0xF0
+    STENCIL = 0xF1
     INCOMPATIBLE = 0xFF
 
 
