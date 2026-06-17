@@ -109,8 +109,13 @@ def max_font_size(
     fill_ratio: float = _DEFAULT_FILL_RATIO,
     rotate: int = 0,
     samples: list[str] | None = None,
+    print_height: int | None = None,
 ) -> int:
-    """Largest font size (px) so text fits within the tape print area."""
+    """Largest font size (px) so text fits within the printable height.
+
+    ``print_height`` overrides the full tape print area when the loaded media
+    confines printing to a narrower band (self-laminating tape).
+    """
     if lines <= 0:
         msg = "lines must be positive"
         raise ValueError(msg)
@@ -123,8 +128,9 @@ def max_font_size(
         msg = "samples length must match lines"
         raise ValueError(msg)
 
-    max_extent = int(tape_width.print_area_pins * fill_ratio)
-    low, high = 1, tape_width.print_area_pins
+    extent = print_height if print_height is not None else tape_width.print_area_pins
+    max_extent = int(extent * fill_ratio)
+    low, high = 1, extent
     best = 0
 
     while low <= high:
@@ -221,14 +227,16 @@ def _render_horizontal(
     align: str,
     line_spacing: float,
     margins: _Margins,
+    print_height: int | None = None,
 ) -> Image.Image:
     draw = ImageDraw.Draw(Image.new("L", (1, 1)))
     max_line_w = _max_line_width(draw, line_list, font)
+    height = print_height if print_height is not None else tape_width.print_area_pins
     image = Image.new(
         "L",
         (
             _label_width(max_line_w, margins=margins, align=align),
-            tape_width.print_area_pins,
+            height,
         ),
         255,
     )
@@ -251,11 +259,15 @@ def _render_rotated_90(
     align: str,
     line_spacing: float,
     margins: _Margins,
+    print_height: int | None = None,
 ) -> Image.Image:
-    """Render text for 90° rotation: cross-tape width is print_area_pins."""
+    """Render text for 90° rotation: cross-tape width is the printable height."""
     draw = ImageDraw.Draw(Image.new("L", (1, 1)))
     max_line_w = _max_line_width(draw, line_list, font)
-    content_w = tape_width.print_area_pins - margins.left - margins.right
+    cross_tape = (
+        print_height if print_height is not None else tape_width.print_area_pins
+    )
+    content_w = cross_tape - margins.left - margins.right
     if max_line_w > content_w:
         msg = (
             f"text width {max_line_w}px exceeds printable width "
@@ -266,7 +278,7 @@ def _render_rotated_90(
     block_h = _block_height(font, len(line_list), line_spacing=line_spacing)
     image = Image.new(
         "L",
-        (tape_width.print_area_pins, block_h + margins.vertical),
+        (cross_tape, block_h + margins.vertical),
         255,
     )
     _draw_stacked_lines(
@@ -319,8 +331,13 @@ def render_text(
     margin_right: int | None = None,
     fixed_width: int | None = None,
     fill_ratio: float = _DEFAULT_FILL_RATIO,
+    print_height: int | None = None,
 ) -> Image.Image:
-    """Render multi-line text to a grayscale image sized for the tape width."""
+    """Render multi-line text to a grayscale image sized for the tape width.
+
+    ``print_height`` confines text to a narrower cross-tape band than the full
+    tape print area (self-laminating tape); defaults to the full print area.
+    """
     if not text.strip() or all(not line.strip() for line in text.split("\n")):
         msg = "text must not be empty"
         raise ImagingError(msg)
@@ -352,6 +369,7 @@ def render_text(
             fill_ratio=fill_ratio,
             rotate=rotate,
             samples=line_list,
+            print_height=print_height,
         )
         size = min(fitted, _MAX_DEFAULT_FONT_SIZE)
     else:
@@ -365,6 +383,7 @@ def render_text(
         "align": align,
         "line_spacing": line_spacing,
         "margins": margins,
+        "print_height": print_height,
     }
 
     if rotate == 0:

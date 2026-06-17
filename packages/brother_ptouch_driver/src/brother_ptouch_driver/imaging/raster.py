@@ -35,10 +35,13 @@ def resize_to_tape_width(
     tape_width: TapeWidth,
     *,
     scale: bool = False,
+    effective_height: int | None = None,
 ) -> Image.Image:
-    """Resize uniformly so image height matches tape print area.
+    """Resize uniformly so image height matches the printable height.
 
-    When scale is False (default), image height must already equal the tape print area.
+    The printable height is the full tape print area, or ``effective_height`` when
+    the loaded media confines printing to a narrower band (self-laminating tape).
+    When scale is False (default), image height must already equal that height.
     When scale is True, integer up/downscale uses nearest-neighbor; non-integer factors
     resample to the target height (may distort QR modules).
     """
@@ -47,7 +50,9 @@ def resize_to_tape_width(
         msg = "image height must be greater than zero"
         raise ImagingError(msg)
 
-    target_height = tape_width.print_area_pins
+    target_height = (
+        effective_height if effective_height is not None else tape_width.print_area_pins
+    )
     if height == target_height:
         return image.copy()
 
@@ -92,19 +97,32 @@ def _set_pin(line: bytearray, pin: int) -> None:
     line[byte_index] |= 1 << bit_index
 
 
-def pack_raster_lines(image: Image.Image, tape_width: TapeWidth) -> list[bytes]:
-    """Pack a 1-bit image into 70-byte raster lines centered on the print head."""
+def pack_raster_lines(
+    image: Image.Image,
+    tape_width: TapeWidth,
+    *,
+    effective_height: int | None = None,
+) -> list[bytes]:
+    """Pack a 1-bit image into 70-byte raster lines positioned on the print head.
+
+    When ``effective_height`` is smaller than the tape print area (self-laminating
+    tape), the image occupies only that many rows, anchored at the white-strip edge
+    of the print area; the remaining clear-flap pins are left unprinted.
+    """
     if image.mode != "1":
         msg = "pack_raster_lines expects mode '1'"
         raise ImagingError(msg)
 
     width, height = image.size
     print_area = tape_width.print_area_pins
-    if height != print_area:
-        msg = f"image height {height} must equal print area {print_area} pins"
+    target_height = effective_height if effective_height is not None else print_area
+    if height != target_height:
+        msg = f"image height {height} must equal print area {target_height} pins"
         raise ImagingError(msg)
 
     left_pins = tape_width.print_area_left_pins
+    # Anchor at the white-strip (low-pin) edge: right_pins is computed from the
+    # full print area so a narrower band sits at the same physical tape edge.
     right_pins = HEAD_PINS - left_pins - print_area
     if left_pins + print_area > HEAD_PINS:
         msg = "print area exceeds print head width"
@@ -129,8 +147,15 @@ def image_to_raster(
     *,
     threshold: int = 128,
     scale: bool = False,
+    effective_height: int | None = None,
 ) -> list[bytes]:
-    """Convert a PIL image to 70-byte raster lines for the protocol encoder."""
+    """Convert a PIL image to 70-byte raster lines for the protocol encoder.
+
+    ``effective_height`` confines printing to a narrower band than the full tape
+    print area (self-laminating tape); defaults to the full print area.
+    """
     mono = to_monochrome(image, threshold=threshold)
-    mono = resize_to_tape_width(mono, tape_width, scale=scale)
-    return pack_raster_lines(mono, tape_width)
+    mono = resize_to_tape_width(
+        mono, tape_width, scale=scale, effective_height=effective_height
+    )
+    return pack_raster_lines(mono, tape_width, effective_height=effective_height)

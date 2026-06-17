@@ -49,6 +49,27 @@ family, 360 dpi TZe table):
 **Printable pixel width** = *Print area (pins)* column. At 360 dpi, 1 pin = 1/360 inch
 vertically and horizontally (360 dpi × 360 dpi mode).
 
+## Self-laminating tape printable band
+
+Self-laminating TZe-SL tape (e.g. TZe-SL251, TZe-SL261) has a printable white strip
+at one edge plus a clear laminate flap that wraps around the cable. Only the white
+strip is usable; printing across the full *Print area* lands content on the clear flap.
+
+The white strip is a **fixed physical height**, bounded by the minimum cable
+circumference rather than the tape width: minimum cable Ø 3.0 mm → circumference ≈ 9.5 mm,
+so the printable band is taken as **9.8 mm**, which is ≈139 pins at 360 dpi and is
+**rounded up to a tidy 140 px** (`SELF_LAMINATING_BAND_PINS`). This is the same on
+24 mm and 36 mm tape — only the clear flap grows with tape width (measured on
+TZe-SL261; 24 mm cross-checked). `brother-ptouch-driver info tapes` lists this band
+as the `self-laminating` row.
+
+When self-laminating media is detected from the status reply
+(`MediaType.SELF_LAMINATING` `0x16`, or `TapeColor.WHITE_SELF_LAMINATING` `0x80`),
+the imaging pipeline confines printing to this band (`effective_print_pins()`),
+anchored at the white-strip edge — i.e. the low-pin (`right_pins`) end of the print
+area, the same edge `pack_raster_lines()` already anchors row 0 to. The remaining
+clear-flap pins are left unprinted.
+
 ## ESC/P media-width codes (reference only)
 
 Raster Command Reference §4, table (3) — TZe *Media Width* byte values (hex):

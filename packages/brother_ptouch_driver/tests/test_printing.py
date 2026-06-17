@@ -219,6 +219,7 @@ def test_print_image_writes_job_for_each_copy(
         TapeWidth.MM_24,
         threshold=100,
         scale=False,
+        effective_height=TapeWidth.MM_24.print_area_pins,
     )
     mock_encode_job.assert_called_once_with(
         TapeWidth.MM_24,
@@ -228,6 +229,39 @@ def test_print_image_writes_job_for_each_copy(
     )
     assert transport.write.call_count == 3  # status + 2 copies
     assert written == 200
+
+
+@patch("brother_ptouch_driver.printing.encode_job", return_value=b"job")
+@patch("brother_ptouch_driver.printing.image_to_raster")
+@patch("brother_ptouch_driver.printing.decode_status")
+@patch("brother_ptouch_driver.printing.status_request", return_value=b"\x1biS")
+@patch("brother_ptouch_driver.printing.UsbTransport")
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_image_self_laminating_confines_to_band(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_job,
+):
+    """Self-laminating media confines the raster to the white band (issue #41)."""
+    from brother_ptouch_driver import print_image
+    from brother_ptouch_driver.protocol.enums import self_laminating_band_pins
+
+    mock_discover.return_value = [_sample_printer()]
+    mock_transport_cls.return_value = _mock_transport()
+    mock_decode_status.return_value = _ready_status(
+        tape=TapeWidth.MM_24, media_type=MediaType.SELF_LAMINATING
+    )
+    mock_image_to_raster.return_value = [b"\x00" * 70] * 60
+
+    print_image(Image.new("L", (80, self_laminating_band_pins()), 255), TapeWidth.MM_24)
+
+    assert (
+        mock_image_to_raster.call_args.kwargs["effective_height"]
+        == self_laminating_band_pins()
+    )
 
 
 @patch("brother_ptouch_driver.printing.decode_status")
