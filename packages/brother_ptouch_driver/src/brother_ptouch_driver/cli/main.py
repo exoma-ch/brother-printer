@@ -19,6 +19,7 @@ from brother_ptouch_driver import (
     print_strip,
     query_status,
     select_printer,
+    self_laminating_band_pins,
 )
 from brother_ptouch_driver.cli.csv_jobs import load_csv_jobs
 from brother_ptouch_driver.cli.render import render_status, status_has_errors
@@ -50,6 +51,9 @@ def info_tapes_cmd() -> None:
     """List supported TZe tape widths and printable pixel widths at 360 dpi."""
     for width in TapeWidth:
         click.echo(f"{width.mm:g} mm\t{width.print_area_pins} px")
+    # Self-laminating tape prints only on a fixed white band (~9.8 mm), not the
+    # full tape width — the same on every width. See issue #41.
+    click.echo(f"self-laminating\t{self_laminating_band_pins()} px")
 
 
 @main.command("discover")

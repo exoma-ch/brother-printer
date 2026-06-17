@@ -133,6 +133,51 @@ class TapeColor(IntEnum):
     INCOMPATIBLE = 0xFF
 
 
+# Self-laminating tape exposes only a narrow printable white strip; the rest is
+# a clear flap that wraps the cable. The strip height is a fixed physical size
+# (~9.8 mm, bounded by the minimum cable circumference) — the same on 24 mm and
+# 36 mm tape; only the clear flap grows with tape width. 9.8 mm is ~139 pins at
+# 360 dpi, rounded up to a tidy 140 px. See issue #41 and docs/vendor/tze-tape-widths.md.
+SELF_LAMINATING_BAND_MM = 9.8
+SELF_LAMINATING_BAND_PINS = 140
+
+
+def self_laminating_band_pins() -> int:
+    """Printable strip height in pins on self-laminating tape (~9.8 mm → 140 px)."""
+    return SELF_LAMINATING_BAND_PINS
+
+
+def is_self_laminating(
+    media_type: "MediaType | int",
+    tape_color: "TapeColor | int | None" = None,
+) -> bool:
+    """Whether the loaded media is self-laminating tape.
+
+    Different self-laminating tapes identify themselves differently: 24/36 mm
+    tape reports ``MediaType.SELF_LAMINATING`` (0x16), while the white TZe-SL251
+    reports ``TapeColor.WHITE_SELF_LAMINATING`` (0x80). See issues #39 and #41.
+    """
+    return (
+        media_type == MediaType.SELF_LAMINATING
+        or tape_color == TapeColor.WHITE_SELF_LAMINATING
+    )
+
+
+def effective_print_pins(
+    tape_width: TapeWidth,
+    media_type: "MediaType | int",
+    tape_color: "TapeColor | int | None" = None,
+) -> int:
+    """Printable height in pins for the loaded media.
+
+    Self-laminating tape confines printing to the narrow white strip; all other
+    media use the full tape print area.
+    """
+    if is_self_laminating(media_type, tape_color):
+        return min(self_laminating_band_pins(), tape_width.print_area_pins)
+    return tape_width.print_area_pins
+
+
 class StatusType(IntEnum):
     """Status type byte (status reply table 5)."""
 

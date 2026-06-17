@@ -2,14 +2,38 @@
 
 from __future__ import annotations
 
+import types
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from click.testing import CliRunner
 from PIL import Image
 
-from brother_ptouch_driver.protocol.enums import TapeWidth
+from brother_ptouch_driver.protocol.enums import MediaType, TapeColor, TapeWidth
 from brother_ptouch_label.cli.main import main
+
+
+def _ready_status(
+    *,
+    media_width: TapeWidth = TapeWidth.MM_24,
+    media_type: MediaType = MediaType.LAMINATED,
+    tape_color: TapeColor = TapeColor.WHITE,
+) -> types.SimpleNamespace:
+    """Minimal stand-in for PrinterStatus (only fields the CLI reads)."""
+    return types.SimpleNamespace(
+        media_width=media_width, media_type=media_type, tape_color=tape_color
+    )
+
+
+@pytest.fixture(autouse=True)
+def mock_detect_status():
+    """Keep CLI tests hermetic: never query a real printer on the print path."""
+    with patch(
+        "brother_ptouch_label.cli.main.detect_status",
+        return_value=_ready_status(),
+    ) as mock:
+        yield mock
 
 
 @patch("brother_ptouch_label.cli.main.print_text")
@@ -39,6 +63,7 @@ def test_cli_text_success(mock_print_text):
         threshold=128,
         auto_cut=True,
         half_cut=False,
+        print_height=TapeWidth.MM_24.print_area_pins,
     )
 
 
@@ -62,17 +87,33 @@ def test_cli_rotate_flag_passes_90(mock_print_text):
     assert mock_print_text.call_args.kwargs["rotate"] == 90
 
 
-@patch("brother_ptouch_label.cli.main.detect_tape_width")
 @patch("brother_ptouch_label.cli.main.print_text")
-def test_cli_auto_detects_tape(mock_print_text, mock_detect):
-    """CLI reads tape width from the printer when --tape is omitted."""
-    mock_detect.return_value = TapeWidth.MM_12
+def test_cli_auto_detects_tape(mock_print_text, mock_detect_status):
+    """CLI reads tape width from the printer status when --tape is omitted."""
+    mock_detect_status.return_value = _ready_status(media_width=TapeWidth.MM_12)
     mock_print_text.return_value = 1
     runner = CliRunner()
     result = runner.invoke(main, ["Hi"])
     assert result.exit_code == 0
-    mock_detect.assert_called_once_with(printer=None)
+    mock_detect_status.assert_called_once_with(printer=None)
     assert mock_print_text.call_args.args[1] == TapeWidth.MM_12
+
+
+@patch("brother_ptouch_label.cli.main.print_text")
+def test_cli_self_laminating_confines_to_band(mock_print_text, mock_detect_status):
+    """Self-laminating tape confines text to the white band via print_height."""
+    from brother_ptouch_driver.protocol.enums import self_laminating_band_pins
+
+    mock_detect_status.return_value = _ready_status(
+        media_type=MediaType.SELF_LAMINATING
+    )
+    mock_print_text.return_value = 1
+    runner = CliRunner()
+    result = runner.invoke(main, ["Hi", "--tape", "24mm"])
+    assert result.exit_code == 0
+    assert (
+        mock_print_text.call_args.kwargs["print_height"] == self_laminating_band_pins()
+    )
 
 
 @patch("brother_ptouch_label.cli.main.render_text")

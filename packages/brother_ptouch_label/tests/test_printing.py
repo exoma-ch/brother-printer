@@ -113,12 +113,14 @@ def test_print_text_composes_render_and_raster(
         margin_left=10,
         margin_right=None,
         fixed_width=200,
+        print_height=None,
     )
     mock_image_to_raster.assert_called_once_with(
         rendered,
         TapeWidth.MM_24,
         threshold=200,
         scale=False,
+        effective_height=TapeWidth.MM_24.print_area_pins,
     )
     mock_encode_job.assert_called_once_with(
         TapeWidth.MM_24,
