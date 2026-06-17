@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.2.0] - TBD
+
+### Added
+
 - **`brother-ptouch-label --replicate N` (alias `--repeat`) for cable-wrap "flag" labels** ([#45](https://github.com/exoma-ch/brother-printer/issues/45))
   - Repeats the text `N` times along the axis perpendicular to its reading direction, so a single label stays legible when wrapped around a cable (useful with flexible-ID TZe-FX tapes)
   - Without `--rotate`, copies stack across the printable height and each is auto-fitted to `print_height / N`; with `--rotate`, copies repeat along the feed axis at full width
@@ -28,10 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Both `brother-ptouch-driver` and `brother-ptouch-label` declare `dynamic = ["version"]`; the version reported by `--version` (and `brother_ptouch_driver.__version__`) is computed from the most recent `X.Y.Z` tag, so the release tag is the single source of truth and `--version` no longer drifts from the actual release
   - Off-tag builds report a development version (e.g. `0.2.1.devN+g<sha>`); a clean `X.Y.Z` is reported only at the exact tag
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 
 - **Self-laminating printable band is per-tape-width, not a fixed height** ([#50](https://github.com/exoma-ch/brother-printer/issues/50))
@@ -49,8 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`setup-usb.sh` crash on `curl | bash` install** ([#37](https://github.com/exoma-ch/brother-printer/issues/37))
   - Guard `${BASH_SOURCE[0]}` with a `$0` default so the documented piped install no longer prints `BASH_SOURCE[0]: unbound variable` under `set -u`
   - Apply the same hardening to the vendor and devcontainer helper scripts
-
-### Security
 
 ## [0.1.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.1.0) - 2026-06-08
 
