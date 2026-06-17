@@ -1,14 +1,16 @@
 """Import tests for the v0.1 package skeleton."""
 
 import importlib
+from importlib.metadata import version
 
 import brother_ptouch_driver
 import pytest
 
 
 def test_version():
-    """The root package exposes the project version."""
-    assert brother_ptouch_driver.__version__ == "0.1.0"
+    """The root package exposes the version derived from package metadata."""
+    assert brother_ptouch_driver.__version__ == version("brother-ptouch-driver")
+    assert brother_ptouch_driver.__version__ != "0.0.0+unknown"
 
 
 @pytest.mark.parametrize(

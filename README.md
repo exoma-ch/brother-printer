@@ -133,6 +133,12 @@ brother-ptouch-label "Hello, world!"
 # Multi-line text with rotation across the tape
 brother-ptouch-label "Line 1\nLine 2" --rotate --tape 24mm
 
+# Repeat the text across the tape for a cable-wrap "flag" label
+brother-ptouch-label "PWR-01" --tape 24mm --replicate 3
+
+# Fill the tape with as many copies as fit at a given font size
+brother-ptouch-label "PWR-01" --tape 24mm --font-size 40 --replicate auto
+
 # Self-laminating tape is auto-detected: text is confined to the white band
 brother-ptouch-label "Cable-01"
 

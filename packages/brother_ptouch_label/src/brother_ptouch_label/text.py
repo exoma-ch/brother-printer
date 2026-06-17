@@ -14,6 +14,7 @@ _MAX_DEFAULT_FONT_SIZE = 48
 _METRICS_SAMPLE = "Ay"
 _VALID_ROTATIONS = frozenset({0, 90})
 _VALID_ALIGNS = frozenset({"left", "center", "right"})
+_AUTO_REPLICATE = frozenset({"auto", "fill", "max"})
 
 
 @dataclass(frozen=True)
@@ -113,8 +114,10 @@ def max_font_size(
 ) -> int:
     """Largest font size (px) so text fits within the printable height.
 
-    ``print_height`` overrides the full tape print area when the loaded media
-    confines printing to a narrower band (self-laminating tape).
+    ``print_height`` overrides the full tape print area with a narrower
+    cross-tape pixel budget: a confined band for self-laminating tape, or the
+    per-copy band height when a replicated copy must be fitted independently.
+    Defaults to ``print_area_pins``.
     """
     if lines <= 0:
         msg = "lines must be positive"
@@ -221,22 +224,21 @@ def _label_width(
 
 def _render_horizontal(
     line_list: list[str],
-    tape_width: TapeWidth,
     font: ImageFont.ImageFont,
     *,
     align: str,
     line_spacing: float,
     margins: _Margins,
-    print_height: int | None = None,
+    print_height: int,
 ) -> Image.Image:
+    """Render lines reading along the feed into a canvas ``print_height`` tall."""
     draw = ImageDraw.Draw(Image.new("L", (1, 1)))
     max_line_w = _max_line_width(draw, line_list, font)
-    height = print_height if print_height is not None else tape_width.print_area_pins
     image = Image.new(
         "L",
         (
             _label_width(max_line_w, margins=margins, align=align),
-            height,
+            print_height,
         ),
         255,
     )
@@ -315,6 +317,194 @@ def _apply_fixed_width(
     return canvas
 
 
+def _effective_height(tape_width: TapeWidth, print_height: int | None) -> int:
+    """Cross-tape pixel budget: the confined band or the full print area."""
+    return print_height if print_height is not None else tape_width.print_area_pins
+
+
+def _resolve_font_size(
+    line_list: list[str],
+    tape_width: TapeWidth,
+    *,
+    font_size: int | None,
+    font_path: str | None,
+    line_spacing: float,
+    fill_ratio: float,
+    rotate: int,
+    print_height: int | None,
+) -> int:
+    if font_size is not None:
+        if font_size < 1:
+            msg = "font size must be at least 1"
+            raise ValueError(msg)
+        return font_size
+    fitted = max_font_size(
+        tape_width,
+        len(line_list),
+        line_spacing=line_spacing,
+        font_path=font_path,
+        fill_ratio=fill_ratio,
+        rotate=rotate,
+        samples=line_list,
+        print_height=print_height,
+    )
+    return min(fitted, _MAX_DEFAULT_FONT_SIZE)
+
+
+def _tile_vertical(
+    unit: Image.Image, total_height: int, count: int, band_extent: int
+) -> Image.Image:
+    """Stack ``count`` copies of ``unit`` down the tape-width axis."""
+    canvas = Image.new("L", (unit.width, total_height), 255)
+    for index in range(count):
+        canvas.paste(unit, (0, index * band_extent))
+    return canvas
+
+
+def _tile_horizontal(unit: Image.Image, count: int) -> Image.Image:
+    """Repeat ``count`` copies of ``unit`` along the feed axis."""
+    canvas = Image.new("L", (unit.width * count, unit.height), 255)
+    for index in range(count):
+        canvas.paste(unit, (index * unit.width, 0))
+    return canvas
+
+
+def _render_replicated_horizontal(
+    line_list: list[str],
+    tape_width: TapeWidth,
+    replicate: int,
+    *,
+    font_path: str | None,
+    font_size: int | None,
+    align: str,
+    line_spacing: float,
+    margins: _Margins,
+    fill_ratio: float,
+    print_height: int | None,
+) -> Image.Image:
+    """Render text reading along the feed, copies stacked across the width."""
+    total = _effective_height(tape_width, print_height)
+    band_extent = total // replicate
+    if band_extent < 1:
+        msg = (
+            f"replicate={replicate} exceeds the {total}px printable height "
+            f"of {tape_width.mm}mm tape"
+        )
+        raise ImagingError(msg)
+    size = _resolve_font_size(
+        line_list,
+        tape_width,
+        font_size=font_size,
+        font_path=font_path,
+        line_spacing=line_spacing,
+        fill_ratio=fill_ratio,
+        rotate=0,
+        print_height=band_extent,
+    )
+    font = _load_font(font_path, size)
+    unit = _render_horizontal(
+        line_list,
+        font,
+        align=align,
+        line_spacing=line_spacing,
+        margins=margins,
+        print_height=band_extent,
+    )
+    if replicate == 1:
+        return unit
+    return _tile_vertical(unit, total, replicate, band_extent)
+
+
+def _render_replicated_rotated(
+    line_list: list[str],
+    tape_width: TapeWidth,
+    replicate: int,
+    *,
+    font_path: str | None,
+    font_size: int | None,
+    align: str,
+    line_spacing: float,
+    margins: _Margins,
+    fill_ratio: float,
+    print_height: int | None,
+) -> Image.Image:
+    """Render text reading across the width, copies repeated along the feed."""
+    size = _resolve_font_size(
+        line_list,
+        tape_width,
+        font_size=font_size,
+        font_path=font_path,
+        line_spacing=line_spacing,
+        fill_ratio=fill_ratio,
+        rotate=90,
+        print_height=print_height,
+    )
+    font = _load_font(font_path, size)
+    unit = _render_rotated_90(
+        line_list,
+        tape_width,
+        font,
+        align=align,
+        line_spacing=line_spacing,
+        margins=margins,
+        print_height=print_height,
+    )
+    if replicate == 1:
+        return unit
+    return _tile_horizontal(unit, replicate)
+
+
+def _resolve_replicate(
+    replicate: int | str,
+    line_list: list[str],
+    tape_width: TapeWidth,
+    *,
+    rotate: int,
+    font_path: str | None,
+    font_size: int | None,
+    line_spacing: float,
+    margins: _Margins,
+    fixed_width: int | None,
+    print_height: int | None,
+) -> int:
+    """Resolve an explicit copy count or an ``"auto"`` fill request to an int."""
+    if not isinstance(replicate, str):
+        if replicate < 1:
+            msg = "replicate must be at least 1"
+            raise ImagingError(msg)
+        return replicate
+
+    if replicate.strip().lower() not in _AUTO_REPLICATE:
+        msg = f"replicate must be a positive integer or 'auto', got {replicate!r}"
+        raise ImagingError(msg)
+    if font_size is None:
+        msg = "automatic replication requires an explicit font_size"
+        raise ImagingError(msg)
+
+    font = _load_font(font_path, font_size)
+    if rotate == 0:
+        total = _effective_height(tape_width, print_height)
+        per_copy = (
+            _block_height(font, len(line_list), line_spacing=line_spacing)
+            + margins.vertical
+        )
+        return max(1, total // max(1, per_copy))
+
+    if fixed_width is None:
+        msg = "automatic replication with rotation requires fixed_width"
+        raise ImagingError(msg)
+    unit = _render_rotated_90(
+        line_list,
+        tape_width,
+        font,
+        align="center",
+        line_spacing=line_spacing,
+        margins=margins,
+        print_height=print_height,
+    )
+    return max(1, fixed_width // max(1, unit.width))
+
+
 def render_text(
     text: str,
     tape_width: TapeWidth,
@@ -330,6 +520,7 @@ def render_text(
     margin_left: int | None = None,
     margin_right: int | None = None,
     fixed_width: int | None = None,
+    replicate: int | str = 1,
     fill_ratio: float = _DEFAULT_FILL_RATIO,
     print_height: int | None = None,
 ) -> Image.Image:
@@ -337,6 +528,16 @@ def render_text(
 
     ``print_height`` confines text to a narrower cross-tape band than the full
     tape print area (self-laminating tape); defaults to the full print area.
+
+    ``replicate`` repeats the text that many times along the axis perpendicular
+    to its reading direction, producing a single label that stays legible when
+    wrapped around a cable. Without ``rotate`` the copies stack across the
+    printable height (so each shrinks to fit ``print_height / replicate``); with
+    ``rotate=90`` the copies repeat along the feed axis at full width.
+
+    Pass ``replicate="auto"`` to fit as many copies as the tape and font allow
+    (requires an explicit ``font_size``; the rotated variant also needs
+    ``fixed_width`` to bound the feed axis).
     """
     if not text.strip() or all(not line.strip() for line in text.split("\n")):
         msg = "text must not be empty"
@@ -360,36 +561,36 @@ def render_text(
     )
 
     line_list = text.split("\n")
-    if font_size is None:
-        fitted = max_font_size(
-            tape_width,
-            len(line_list),
-            line_spacing=line_spacing,
-            font_path=font_path,
-            fill_ratio=fill_ratio,
-            rotate=rotate,
-            samples=line_list,
-            print_height=print_height,
-        )
-        size = min(fitted, _MAX_DEFAULT_FONT_SIZE)
-    else:
-        if font_size < 1:
-            msg = "font size must be at least 1"
-            raise ValueError(msg)
-        size = font_size
-
-    font = _load_font(font_path, size)
-    render_kwargs = {
+    replicate_count = _resolve_replicate(
+        replicate,
+        line_list,
+        tape_width,
+        rotate=rotate,
+        font_path=font_path,
+        font_size=font_size,
+        line_spacing=line_spacing,
+        margins=margins,
+        fixed_width=fixed_width,
+        print_height=print_height,
+    )
+    replicate_kwargs = {
+        "font_path": font_path,
+        "font_size": font_size,
         "align": align,
         "line_spacing": line_spacing,
         "margins": margins,
+        "fill_ratio": fill_ratio,
         "print_height": print_height,
     }
 
     if rotate == 0:
-        image = _render_horizontal(line_list, tape_width, font, **render_kwargs)
+        image = _render_replicated_horizontal(
+            line_list, tape_width, replicate_count, **replicate_kwargs
+        )
     else:
-        image = _render_rotated_90(line_list, tape_width, font, **render_kwargs)
+        image = _render_replicated_rotated(
+            line_list, tape_width, replicate_count, **replicate_kwargs
+        )
 
     if fixed_width is not None:
         image = _apply_fixed_width(image, fixed_width, align=align)

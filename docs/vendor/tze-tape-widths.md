@@ -55,13 +55,29 @@ Self-laminating TZe-SL tape (e.g. TZe-SL251, TZe-SL261) has a printable white st
 at one edge plus a clear laminate flap that wraps around the cable. Only the white
 strip is usable; printing across the full *Print area* lands content on the clear flap.
 
-The white strip is a **fixed physical height**, bounded by the minimum cable
-circumference rather than the tape width: minimum cable Ø 3.0 mm → circumference ≈ 9.5 mm,
-so the printable band is taken as **9.8 mm**, which is ≈139 pins at 360 dpi and is
-**rounded up to a tidy 140 px** (`SELF_LAMINATING_BAND_PINS`). This is the same on
-24 mm and 36 mm tape — only the clear flap grows with tape width (measured on
-TZe-SL261; 24 mm cross-checked). `brother-ptouch-driver info tapes` lists this band
-as the `self-laminating` row.
+The white strip height **scales with tape width** — it is *not* a single fixed
+physical size. The original assumption (a fixed ~9.8 mm band bounded by the minimum
+cable circumference, the same on every width) was disproved by hardware testing on a
+PT-E920BT (issue #50): on wider tape the strip is taller, so a fixed 140 px confined
+content to far less than the actual strip. The band is therefore a **per-width table**
+(`_SELF_LAMINATING_BAND_PINS`), measured per cartridge at 360 dpi, mirroring the
+*Print area* column:
+
+| Tape width (mm) | Self-laminating band (pins) | ≈ mm | White backing | Source |
+| --- | ---: | ---: | ---: | --- |
+| 24 | **120** | 8.5 | ~10 mm | hardware-measured (PT-E920BT) |
+| 36 | **156** | 11 | ~13 mm | hardware-measured (TZe-SL261) |
+
+The band is the *usable* strip height, ~2 mm shorter than the white backing: the
+printer's own ~1 mm unprintable top margin forms the top gap, and the band height
+leaves a matching ~1 mm at the bottom. It is anchored at the top edge (`pack_raster_lines`
+row 0) with no extra offset, so the hardware margin and band height alone position it.
+
+Only 24 mm and 36 mm self-laminating cartridges were available to measure. Widths
+absent from the table are **not confined** — they fall back to the full *Print area* —
+since self-laminating TZe-SL tape is only sold in those widths. `brother-ptouch-driver
+info tapes` appends a `self-laminating: <pins> px` column to each width that has a
+measured band.
 
 When self-laminating media is detected from the status reply
 (`MediaType.SELF_LAMINATING` `0x16`, or `TapeColor.WHITE_SELF_LAMINATING` `0x80`),

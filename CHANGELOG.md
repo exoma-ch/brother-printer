@@ -5,25 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.2.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.2.0) - 2026-06-17
 
 ### Added
 
+- **`brother-ptouch-label --replicate N` (alias `--repeat`) for cable-wrap "flag" labels** ([#45](https://github.com/exoma-ch/brother-printer/issues/45))
+  - Repeats the text `N` times along the axis perpendicular to its reading direction, so a single label stays legible when wrapped around a cable (useful with flexible-ID TZe-FX tapes)
+  - Without `--rotate`, copies stack across the printable height and each is auto-fitted to `print_height / N`; with `--rotate`, copies repeat along the feed axis at full width
+  - Accepts `--replicate auto` to fit as many copies as the tape and font size allow (needs `--font-size`, plus `--width` when combined with `--rotate`)
+  - Respects the self-laminating white band: replicated copies stack within the confined print height
+  - Defaults to `1` (no replication), so existing renders are unchanged
 - **Confine printing to the white band on self-laminating tape** ([#41](https://github.com/exoma-ch/brother-printer/issues/41))
-  - When the printer reports self-laminating media (`MediaType.SELF_LAMINATING` `0x16` or `TapeColor.WHITE_SELF_LAMINATING` `0x80`), printing is automatically limited to the narrow printable white strip (~9.8 mm, 140 px at 360 dpi) and centred there, instead of spanning the full tape width onto the clear laminate flap
-  - `brother-ptouch-driver info tapes` now reports the self-laminating printable band (`self-laminating  140 px`) alongside the per-width print areas
+  - When the printer reports self-laminating media (`MediaType.SELF_LAMINATING` `0x16` or `TapeColor.WHITE_SELF_LAMINATING` `0x80`), printing is automatically limited to the narrow printable white strip and anchored at the white-strip edge, instead of spanning the full tape width onto the clear laminate flap
+  - `brother-ptouch-driver info tapes` now reports the self-laminating printable band per width alongside the per-width print areas
   - Applies to every print path — direct PNG (`brother-ptouch-driver print`), rendered text (`brother-ptouch-label`), and chained strips/CSV — via a shared effective-print-height in the imaging pipeline; text is rendered directly at the band height so it stays crisp rather than downscaled
   - Auto-detected from live printer status (no new flag); the clear-flap region is left unprinted, and direct PNG printing follows the existing fit rule (band-height image, or `--scale` to resize) so QR sharpness is preserved
   - New helpers `effective_print_pins`, `is_self_laminating`, and `self_laminating_band_pins` in `brother_ptouch_driver.protocol.enums`
 
 ### Changed
 
-### Deprecated
-
-### Removed
+- **Package versions are now derived from the git release tag** (hatch-vcs) instead of hardcoded strings
+  - Both `brother-ptouch-driver` and `brother-ptouch-label` declare `dynamic = ["version"]`; the version reported by `--version` (and `brother_ptouch_driver.__version__`) is computed from the most recent `X.Y.Z` tag, so the release tag is the single source of truth and `--version` no longer drifts from the actual release
+  - Off-tag builds report a development version (e.g. `0.2.1.devN+g<sha>`); a clean `X.Y.Z` is reported only at the exact tag
 
 ### Fixed
 
+- **Self-laminating printable band is per-tape-width, not a fixed height** ([#50](https://github.com/exoma-ch/brother-printer/issues/50))
+  - The white-strip band added in #41 assumed a single fixed ~9.8 mm (140 px) height for every tape width; hardware testing on a PT-E920BT showed the strip scales with tape width, so on wider tape (e.g. 36 mm TZe-SL261) content was confined to far less than the actual ~15 mm strip
+  - Replace the single `SELF_LAMINATING_BAND_PINS` constant with a per-`TapeWidth` band table looked up by `effective_print_pins()` — 24 mm → 120 px (8.5 mm), 36 mm → 156 px (11 mm), both hardware-measured; `self_laminating_band_pins()` now takes the tape width
+  - `brother-ptouch-driver info tapes` shows the measured band per width instead of one fixed `self-laminating` row
 - **`just` recipes dropped quoting on space-containing arguments** ([#42](https://github.com/exoma-ch/brother-printer/issues/42))
   - `just label "Flex ID"` expanded `{{ args }}` as raw text, so the shell word-split the label into two CLI arguments (`Got unexpected extra argument`)
   - Enable `set positional-arguments` and forward `"$@"` instead of `{{ args }}` in the `discover`, `printer-status`, `tapes`, `print`, `label` and `setup-usb` recipes so quoted arguments survive intact
@@ -35,8 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`setup-usb.sh` crash on `curl | bash` install** ([#37](https://github.com/exoma-ch/brother-printer/issues/37))
   - Guard `${BASH_SOURCE[0]}` with a `$0` default so the documented piped install no longer prints `BASH_SOURCE[0]: unbound variable` under `set -u`
   - Apply the same hardening to the vendor and devcontainer helper scripts
-
-### Security
 
 ## [0.1.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.1.0) - 2026-06-08
 

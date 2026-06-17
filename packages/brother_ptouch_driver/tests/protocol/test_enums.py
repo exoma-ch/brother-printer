@@ -56,8 +56,11 @@ def test_media_type_self_laminating():
 
 
 def test_self_laminating_band_pins():
-    """Band height is ~9.8 mm at 360 dpi (issue #41)."""
-    assert self_laminating_band_pins() == 140
+    """Band height is a per-width hardware-measured value (issue #50)."""
+    assert self_laminating_band_pins(TapeWidth.MM_24) == 120
+    assert self_laminating_band_pins(TapeWidth.MM_36) == 156
+    # Widths without a measured band fall back to the full print area.
+    assert self_laminating_band_pins(TapeWidth.MM_12) == TapeWidth.MM_12.print_area_pins
 
 
 def test_is_self_laminating_by_media_type_or_color():
@@ -72,9 +75,9 @@ def test_is_self_laminating_by_media_type_or_color():
 @pytest.mark.parametrize(
     ("tape", "media_type", "tape_color", "expected"),
     [
-        (TapeWidth.MM_24, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 140),
-        (TapeWidth.MM_36, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 140),
-        (TapeWidth.MM_24, MediaType.LAMINATED, TapeColor.WHITE_SELF_LAMINATING, 140),
+        (TapeWidth.MM_24, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 120),
+        (TapeWidth.MM_36, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 156),
+        (TapeWidth.MM_24, MediaType.LAMINATED, TapeColor.WHITE_SELF_LAMINATING, 120),
         (TapeWidth.MM_24, MediaType.LAMINATED, TapeColor.WHITE, 320),
         (TapeWidth.MM_36, MediaType.LAMINATED, TapeColor.WHITE, 454),
     ],
