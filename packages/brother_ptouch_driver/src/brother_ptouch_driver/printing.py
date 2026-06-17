@@ -14,7 +14,11 @@ from brother_ptouch_driver.protocol.encoder import (
     encode_strip_job,
     status_request,
 )
-from brother_ptouch_driver.protocol.enums import MediaType, TapeWidth
+from brother_ptouch_driver.protocol.enums import (
+    MediaType,
+    TapeWidth,
+    effective_print_pins,
+)
 from brother_ptouch_driver.transport import UsbTransport, discover
 from brother_ptouch_driver.transport.base import PrinterInfo, Transport
 from brother_ptouch_driver.transport.errors import DeviceNotFoundError
@@ -118,11 +122,15 @@ def print_image(
         status = _read_status(transport)
         _validate_status(status, tape_width, half_cut=half_cut)
 
+        effective_height = effective_print_pins(
+            tape_width, status.media_type, status.tape_color
+        )
         raster_lines = image_to_raster(
             image,
             tape_width,
             threshold=threshold,
             scale=scale,
+            effective_height=effective_height,
         )
         job = encode_job(
             tape_width,
@@ -190,6 +198,9 @@ def print_strip(
         raster_kwargs = {
             "threshold": threshold,
             "scale": scale,
+            "effective_height": effective_print_pins(
+                tape_width, status.media_type, status.tape_color
+            ),
         }
         pages: list[list[bytes]] = []
         for image in images:

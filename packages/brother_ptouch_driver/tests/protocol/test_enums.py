@@ -9,6 +9,9 @@ from brother_ptouch_driver.protocol.enums import (
     TapeColor,
     TapeWidth,
     decode_error_messages,
+    effective_print_pins,
+    is_self_laminating,
+    self_laminating_band_pins,
 )
 
 
@@ -50,6 +53,35 @@ def test_media_type_values():
 def test_media_type_self_laminating():
     """MediaType includes the field-reported self-laminating byte (issue #39)."""
     assert MediaType.SELF_LAMINATING == 0x16
+
+
+def test_self_laminating_band_pins():
+    """Band height is ~9.8 mm at 360 dpi (issue #41)."""
+    assert self_laminating_band_pins() == 140
+
+
+def test_is_self_laminating_by_media_type_or_color():
+    """Self-laminating is detected via media type 0x16 or tape color 0x80."""
+    assert is_self_laminating(MediaType.SELF_LAMINATING)
+    assert is_self_laminating(MediaType.LAMINATED, TapeColor.WHITE_SELF_LAMINATING)
+    assert not is_self_laminating(MediaType.LAMINATED, TapeColor.WHITE)
+    # Undocumented raw bytes never look self-laminating.
+    assert not is_self_laminating(0x99, 0x99)
+
+
+@pytest.mark.parametrize(
+    ("tape", "media_type", "tape_color", "expected"),
+    [
+        (TapeWidth.MM_24, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 140),
+        (TapeWidth.MM_36, MediaType.SELF_LAMINATING, TapeColor.CLEAR, 140),
+        (TapeWidth.MM_24, MediaType.LAMINATED, TapeColor.WHITE_SELF_LAMINATING, 140),
+        (TapeWidth.MM_24, MediaType.LAMINATED, TapeColor.WHITE, 320),
+        (TapeWidth.MM_36, MediaType.LAMINATED, TapeColor.WHITE, 454),
+    ],
+)
+def test_effective_print_pins(tape, media_type, tape_color, expected):
+    """Self-laminating confines to the band; other media use the full print area."""
+    assert effective_print_pins(tape, media_type, tape_color) == expected
 
 
 def test_tape_color_values():

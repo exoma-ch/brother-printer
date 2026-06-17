@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Confine printing to the white band on self-laminating tape** ([#41](https://github.com/exoma-ch/brother-printer/issues/41))
+  - When the printer reports self-laminating media (`MediaType.SELF_LAMINATING` `0x16` or `TapeColor.WHITE_SELF_LAMINATING` `0x80`), printing is automatically limited to the narrow printable white strip (~9.8 mm, 140 px at 360 dpi) and centred there, instead of spanning the full tape width onto the clear laminate flap
+  - `brother-ptouch-driver info tapes` now reports the self-laminating printable band (`self-laminating  140 px`) alongside the per-width print areas
+  - Applies to every print path — direct PNG (`brother-ptouch-driver print`), rendered text (`brother-ptouch-label`), and chained strips/CSV — via a shared effective-print-height in the imaging pipeline; text is rendered directly at the band height so it stays crisp rather than downscaled
+  - Auto-detected from live printer status (no new flag); the clear-flap region is left unprinted, and direct PNG printing follows the existing fit rule (band-height image, or `--scale` to resize) so QR sharpness is preserved
+  - New helpers `effective_print_pins`, `is_self_laminating`, and `self_laminating_band_pins` in `brother_ptouch_driver.protocol.enums`
+
 ### Changed
 
 ### Deprecated
