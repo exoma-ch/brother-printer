@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`brother-ptouch-label --replicate N` (alias `--repeat`) for cable-wrap "flag" labels** ([#45](https://github.com/exoma-ch/brother-printer/issues/45))
+  - Repeats the text `N` times along the axis perpendicular to its reading direction, so a single label stays legible when wrapped around a cable (useful with flexible-ID TZe-FX tapes)
+  - Without `--rotate`, copies stack across the printable height and each is auto-fitted to `print_height / N`; with `--rotate`, copies repeat along the feed axis at full width
+  - Accepts `--replicate auto` to fit as many copies as the tape and font size allow (needs `--font-size`, plus `--width` when combined with `--rotate`)
+  - Respects the self-laminating white band: replicated copies stack within the confined print height
+  - Defaults to `1` (no replication), so existing renders are unchanged
 - **Confine printing to the white band on self-laminating tape** ([#41](https://github.com/exoma-ch/brother-printer/issues/41))
   - When the printer reports self-laminating media (`MediaType.SELF_LAMINATING` `0x16` or `TapeColor.WHITE_SELF_LAMINATING` `0x80`), printing is automatically limited to the narrow printable white strip (~9.8 mm, 140 px at 360 dpi) and centred there, instead of spanning the full tape width onto the clear laminate flap
   - `brother-ptouch-driver info tapes` now reports the self-laminating printable band (`self-laminating  140 px`) alongside the per-width print areas
