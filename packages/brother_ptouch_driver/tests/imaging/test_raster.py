@@ -280,7 +280,7 @@ def test_image_to_raster_end_to_end():
 def test_pack_raster_lines_band_anchors_at_white_strip_edge():
     """A band-height image packs at the white-strip (low-pin) edge of the head."""
     tape = TapeWidth.MM_24
-    band = 140  # ~9.8 mm at 360 dpi (self_laminating_band_pins())
+    band = 120  # 24 mm self-laminating band, hardware-measured (issue #50)
     image = Image.new("1", (3, band), 255)
     pixels = image.load()
     assert pixels is not None
@@ -302,7 +302,7 @@ def test_pack_raster_lines_band_anchors_at_white_strip_edge():
 
 def test_resize_to_tape_width_effective_height_strict():
     """With a band effective_height, exact-height input is accepted as-is."""
-    band = 140
+    band = 120
     image = Image.new("1", (4, band), 255)
     result = resize_to_tape_width(image, TapeWidth.MM_24, effective_height=band)
     assert result.size == (4, band)
@@ -312,16 +312,16 @@ def test_resize_to_tape_width_effective_height_scales_to_band():
     """scale=True resizes a full-height image down to the band height."""
     image = Image.new("1", (8, TapeWidth.MM_24.print_area_pins), 255)
     result = resize_to_tape_width(
-        image, TapeWidth.MM_24, scale=True, effective_height=140
+        image, TapeWidth.MM_24, scale=True, effective_height=120
     )
-    assert result.size[1] == 140
+    assert result.size[1] == 120
 
 
 def test_image_to_raster_band_produces_band_height_lines():
     """End-to-end band path yields lines sized for the band, not the full tape."""
     image = _checkerboard(modules=10, module_px=4, mode="RGB")
     lines = image_to_raster(
-        image, TapeWidth.MM_24, threshold=128, scale=True, effective_height=140
+        image, TapeWidth.MM_24, threshold=128, scale=True, effective_height=120
     )
     assert all(len(line) == RASTER_LINE_BYTES for line in lines)
     # Confirm every set pin sits inside the white band, never the clear flap.
@@ -333,4 +333,4 @@ def test_image_to_raster_band_produces_band_height_lines():
     for line in lines:
         for pin in range(HEAD_PINS):
             if line[pin // 8] & (1 << (7 - pin % 8)):
-                assert right_pins <= pin < right_pins + 140
+                assert right_pins <= pin < right_pins + 120

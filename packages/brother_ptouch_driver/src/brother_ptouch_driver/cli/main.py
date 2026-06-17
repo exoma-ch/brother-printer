@@ -50,10 +50,13 @@ def info_group() -> None:
 def info_tapes_cmd() -> None:
     """List supported TZe tape widths and printable pixel widths at 360 dpi."""
     for width in TapeWidth:
-        click.echo(f"{width.mm:g} mm\t{width.print_area_pins} px")
-    # Self-laminating tape prints only on a fixed white band (~9.8 mm), not the
-    # full tape width — the same on every width. See issue #41.
-    click.echo(f"self-laminating\t{self_laminating_band_pins()} px")
+        line = f"{width.mm:g} mm\t{width.print_area_pins} px"
+        # Self-laminating tape prints only on a narrow white band that scales with
+        # tape width, not the full print area; show it where measured. See issue #50.
+        band = self_laminating_band_pins(width)
+        if band < width.print_area_pins:
+            line += f"\tself-laminating: {band} px"
+        click.echo(line)
 
 
 @main.command("discover")

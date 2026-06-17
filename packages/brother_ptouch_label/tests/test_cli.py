@@ -112,9 +112,9 @@ def test_cli_self_laminating_confines_to_band(mock_print_text, mock_detect_statu
     runner = CliRunner()
     result = runner.invoke(main, ["Hi", "--tape", "24mm"])
     assert result.exit_code == 0
-    assert (
-        mock_print_text.call_args.kwargs["print_height"] == self_laminating_band_pins()
-    )
+    assert mock_print_text.call_args.kwargs[
+        "print_height"
+    ] == self_laminating_band_pins(TapeWidth.MM_24)
 
 
 @patch("brother_ptouch_label.cli.main.render_text")
