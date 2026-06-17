@@ -116,6 +116,19 @@ def _resolve_margins(
     help="Fixed label width in pixels along the feed axis.",
 )
 @click.option(
+    "--replicate",
+    "--repeat",
+    "replicate",
+    type=click.IntRange(min=1),
+    default=1,
+    show_default=True,
+    help=(
+        "Repeat the text N times perpendicular to its reading direction "
+        "(across the tape width, or along the feed with --rotate) so a single "
+        "label stays legible when wrapped around a cable."
+    ),
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -147,6 +160,7 @@ def main(
     margin_left: int | None,
     margin_right: int | None,
     fixed_width: int | None,
+    replicate: int,
     output: Path | None,
     printer: str | None,
 ) -> None:
@@ -172,6 +186,7 @@ def main(
         "line_spacing": line_spacing,
         "rotate": 90 if rotate else 0,
         "fixed_width": fixed_width,
+        "replicate": replicate,
         **margin_kwargs,
     }
 

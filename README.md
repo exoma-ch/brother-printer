@@ -130,6 +130,9 @@ brother-ptouch-label "Hello, world!"
 # Multi-line text with rotation across the tape
 brother-ptouch-label "Line 1\nLine 2" --rotate --tape 24mm
 
+# Repeat the text across the tape for a cable-wrap "flag" label
+brother-ptouch-label "PWR-01" --tape 24mm --replicate 3
+
 # Render a label to PNG without printing
 brother-ptouch-label "Preview" -o label.png --tape 12mm
 ```

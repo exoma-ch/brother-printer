@@ -36,6 +36,7 @@ def test_cli_text_success(mock_print_text):
         margin_left=None,
         margin_right=None,
         fixed_width=None,
+        replicate=1,
         threshold=128,
         auto_cut=True,
         half_cut=False,
@@ -89,6 +90,26 @@ def test_cli_output_writes_png(mock_print_text, mock_render_text, tmp_path: Path
     mock_print_text.assert_not_called()
     mock_render_text.assert_called_once()
     assert out.is_file()
+
+
+@patch("brother_ptouch_label.cli.main.print_text")
+def test_cli_replicate_option_forwarded(mock_print_text):
+    """--replicate is forwarded to print_text."""
+    mock_print_text.return_value = 1
+    runner = CliRunner()
+    result = runner.invoke(main, ["Hi", "--tape", "24mm", "--replicate", "3"])
+    assert result.exit_code == 0
+    assert mock_print_text.call_args.kwargs["replicate"] == 3
+
+
+@patch("brother_ptouch_label.cli.main.print_text")
+def test_cli_repeat_alias_forwarded(mock_print_text):
+    """The --repeat alias maps to the same replicate option."""
+    mock_print_text.return_value = 1
+    runner = CliRunner()
+    result = runner.invoke(main, ["Hi", "--tape", "24mm", "--repeat", "2"])
+    assert result.exit_code == 0
+    assert mock_print_text.call_args.kwargs["replicate"] == 2
 
 
 @patch("brother_ptouch_label.cli.main.print_text")

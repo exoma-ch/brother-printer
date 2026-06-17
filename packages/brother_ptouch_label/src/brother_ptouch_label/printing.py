@@ -40,6 +40,7 @@ def print_text(
     margin_left: int | None = None,
     margin_right: int | None = None,
     fixed_width: int | None = None,
+    replicate: int = 1,
     threshold: int = 128,
     auto_cut: bool = True,
     half_cut: bool = False,
@@ -59,6 +60,7 @@ def print_text(
         margin_left=margin_left,
         margin_right=margin_right,
         fixed_width=fixed_width,
+        replicate=replicate,
     )
     return print_image(
         image,

@@ -113,6 +113,7 @@ def test_print_text_composes_render_and_raster(
         margin_left=10,
         margin_right=None,
         fixed_width=200,
+        replicate=1,
     )
     mock_image_to_raster.assert_called_once_with(
         rendered,

@@ -187,6 +187,14 @@ def _ink_pixel_count(image: Image.Image) -> int:
     )
 
 
+def _ink_rows(image: Image.Image) -> set[int]:
+    pixels = image.load()
+    assert pixels is not None
+    return {
+        y for y in range(image.height) for x in range(image.width) if pixels[x, y] < 128
+    }
+
+
 @pytest.mark.parametrize("tape_width", _ALL_TAPES)
 @pytest.mark.parametrize("rotate", _VALID_ROTATIONS)
 def test_render_text_height_matches_tape(tape_width, rotate):
@@ -271,6 +279,58 @@ def test_render_text_rotate_90_rejects_overflowing_font():
     tape = TapeWidth.MM_12
     with pytest.raises(ImagingError, match="exceeds printable width"):
         render_text("WIDE", tape, rotate=90, font_size=200)
+
+
+def test_render_text_replicate_one_is_noop():
+    """replicate=1 produces the same image as the default single render."""
+    tape = TapeWidth.MM_24
+    plain = render_text("ID", tape)
+    once = render_text("ID", tape, replicate=1)
+    assert once.size == plain.size
+    assert once.tobytes() == plain.tobytes()
+
+
+def test_render_text_replicate_stacks_across_tape_width():
+    """Without rotation, copies stack across the tape width within print height."""
+    tape = TapeWidth.MM_36
+    image = render_text("ID", tape, replicate=3)
+    assert image.height == tape.print_area_pins
+    band = tape.print_area_pins // 3
+    rows = _ink_rows(image)
+    assert any(0 <= y < band for y in rows)
+    assert any(band <= y < 2 * band for y in rows)
+    assert any(2 * band <= y < 3 * band for y in rows)
+
+
+def test_render_text_replicate_shrinks_font_per_copy():
+    """Stacked copies use a smaller font than a single full-height label."""
+    tape = TapeWidth.MM_36
+    single = max_font_size(tape, 1)
+    per_copy = max_font_size(tape, 1, print_extent=tape.print_area_pins // 3)
+    assert per_copy < single
+
+
+def test_render_text_replicate_rotate_repeats_along_feed():
+    """With rotation, copies repeat along the feed axis at full width each."""
+    tape = TapeWidth.MM_24
+    single = render_text("ID", tape, rotate=90, font_size=32)
+    triple = render_text("ID", tape, rotate=90, font_size=32, replicate=3)
+    assert triple.height == tape.print_area_pins
+    assert triple.width == single.width * 3
+
+
+def test_render_text_replicate_rejects_too_many_copies():
+    """More copies than printable rows raises a clear error."""
+    tape = TapeWidth.MM_3_5
+    with pytest.raises(ImagingError, match="exceeds"):
+        render_text("X", tape, replicate=tape.print_area_pins + 1)
+
+
+@pytest.mark.parametrize("replicate", [0, -1])
+def test_render_text_rejects_invalid_replicate(replicate):
+    """replicate below 1 raises ImagingError."""
+    with pytest.raises(ImagingError, match="replicate"):
+        render_text("Hi", TapeWidth.MM_24, replicate=replicate)
 
 
 def test_render_text_default_caps_font_size(golden_font: Path) -> None:
@@ -477,6 +537,8 @@ def _text_to_job(text: str, tape: TapeWidth, **kwargs: object) -> bytes:
         ("Turn", {"rotate": 90}),
         ("Padded", {"margin_left": 10, "margin_right": 10}),
         ("Fixed", {"fixed_width": 500, "font_size": 32}),
+        ("Wrap", {"replicate": 3}),
+        ("WrapRot", {"rotate": 90, "replicate": 2}),
     ],
 )
 def test_render_text_end_to_end_feature_matrix(label, kwargs):
