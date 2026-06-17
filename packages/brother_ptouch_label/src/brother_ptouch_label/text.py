@@ -110,13 +110,14 @@ def max_font_size(
     fill_ratio: float = _DEFAULT_FILL_RATIO,
     rotate: int = 0,
     samples: list[str] | None = None,
-    print_extent: int | None = None,
+    print_height: int | None = None,
 ) -> int:
-    """Largest font size (px) so text fits within the tape print area.
+    """Largest font size (px) so text fits within the printable height.
 
-    ``print_extent`` overrides the available cross-tape pixel budget (defaults
-    to the full ``print_area_pins``); replicated labels pass a reduced band
-    height so each copy is fitted independently.
+    ``print_height`` overrides the full tape print area with a narrower
+    cross-tape pixel budget: a confined band for self-laminating tape, or the
+    per-copy band height when a replicated copy must be fitted independently.
+    Defaults to ``print_area_pins``.
     """
     if lines <= 0:
         msg = "lines must be positive"
@@ -130,7 +131,7 @@ def max_font_size(
         msg = "samples length must match lines"
         raise ValueError(msg)
 
-    extent = tape_width.print_area_pins if print_extent is None else print_extent
+    extent = print_height if print_height is not None else tape_width.print_area_pins
     max_extent = int(extent * fill_ratio)
     low, high = 1, extent
     best = 0
@@ -228,15 +229,16 @@ def _render_horizontal(
     align: str,
     line_spacing: float,
     margins: _Margins,
-    print_extent: int,
+    print_height: int,
 ) -> Image.Image:
+    """Render lines reading along the feed into a canvas ``print_height`` tall."""
     draw = ImageDraw.Draw(Image.new("L", (1, 1)))
     max_line_w = _max_line_width(draw, line_list, font)
     image = Image.new(
         "L",
         (
             _label_width(max_line_w, margins=margins, align=align),
-            print_extent,
+            print_height,
         ),
         255,
     )
@@ -259,11 +261,15 @@ def _render_rotated_90(
     align: str,
     line_spacing: float,
     margins: _Margins,
+    print_height: int | None = None,
 ) -> Image.Image:
-    """Render text for 90° rotation: cross-tape width is print_area_pins."""
+    """Render text for 90° rotation: cross-tape width is the printable height."""
     draw = ImageDraw.Draw(Image.new("L", (1, 1)))
     max_line_w = _max_line_width(draw, line_list, font)
-    content_w = tape_width.print_area_pins - margins.left - margins.right
+    cross_tape = (
+        print_height if print_height is not None else tape_width.print_area_pins
+    )
+    content_w = cross_tape - margins.left - margins.right
     if max_line_w > content_w:
         msg = (
             f"text width {max_line_w}px exceeds printable width "
@@ -274,7 +280,7 @@ def _render_rotated_90(
     block_h = _block_height(font, len(line_list), line_spacing=line_spacing)
     image = Image.new(
         "L",
-        (tape_width.print_area_pins, block_h + margins.vertical),
+        (cross_tape, block_h + margins.vertical),
         255,
     )
     _draw_stacked_lines(
@@ -311,6 +317,11 @@ def _apply_fixed_width(
     return canvas
 
 
+def _effective_height(tape_width: TapeWidth, print_height: int | None) -> int:
+    """Cross-tape pixel budget: the confined band or the full print area."""
+    return print_height if print_height is not None else tape_width.print_area_pins
+
+
 def _resolve_font_size(
     line_list: list[str],
     tape_width: TapeWidth,
@@ -320,7 +331,7 @@ def _resolve_font_size(
     line_spacing: float,
     fill_ratio: float,
     rotate: int,
-    print_extent: int | None,
+    print_height: int | None,
 ) -> int:
     if font_size is not None:
         if font_size < 1:
@@ -335,7 +346,7 @@ def _resolve_font_size(
         fill_ratio=fill_ratio,
         rotate=rotate,
         samples=line_list,
-        print_extent=print_extent,
+        print_height=print_height,
     )
     return min(fitted, _MAX_DEFAULT_FONT_SIZE)
 
@@ -369,9 +380,10 @@ def _render_replicated_horizontal(
     line_spacing: float,
     margins: _Margins,
     fill_ratio: float,
+    print_height: int | None,
 ) -> Image.Image:
     """Render text reading along the feed, copies stacked across the width."""
-    total = tape_width.print_area_pins
+    total = _effective_height(tape_width, print_height)
     band_extent = total // replicate
     if band_extent < 1:
         msg = (
@@ -387,7 +399,7 @@ def _render_replicated_horizontal(
         line_spacing=line_spacing,
         fill_ratio=fill_ratio,
         rotate=0,
-        print_extent=band_extent,
+        print_height=band_extent,
     )
     font = _load_font(font_path, size)
     unit = _render_horizontal(
@@ -396,7 +408,7 @@ def _render_replicated_horizontal(
         align=align,
         line_spacing=line_spacing,
         margins=margins,
-        print_extent=band_extent,
+        print_height=band_extent,
     )
     if replicate == 1:
         return unit
@@ -414,6 +426,7 @@ def _render_replicated_rotated(
     line_spacing: float,
     margins: _Margins,
     fill_ratio: float,
+    print_height: int | None,
 ) -> Image.Image:
     """Render text reading across the width, copies repeated along the feed."""
     size = _resolve_font_size(
@@ -424,7 +437,7 @@ def _render_replicated_rotated(
         line_spacing=line_spacing,
         fill_ratio=fill_ratio,
         rotate=90,
-        print_extent=None,
+        print_height=print_height,
     )
     font = _load_font(font_path, size)
     unit = _render_rotated_90(
@@ -434,6 +447,7 @@ def _render_replicated_rotated(
         align=align,
         line_spacing=line_spacing,
         margins=margins,
+        print_height=print_height,
     )
     if replicate == 1:
         return unit
@@ -451,6 +465,7 @@ def _resolve_replicate(
     line_spacing: float,
     margins: _Margins,
     fixed_width: int | None,
+    print_height: int | None,
 ) -> int:
     """Resolve an explicit copy count or an ``"auto"`` fill request to an int."""
     if not isinstance(replicate, str):
@@ -468,11 +483,12 @@ def _resolve_replicate(
 
     font = _load_font(font_path, font_size)
     if rotate == 0:
+        total = _effective_height(tape_width, print_height)
         per_copy = (
             _block_height(font, len(line_list), line_spacing=line_spacing)
             + margins.vertical
         )
-        return max(1, tape_width.print_area_pins // max(1, per_copy))
+        return max(1, total // max(1, per_copy))
 
     if fixed_width is None:
         msg = "automatic replication with rotation requires fixed_width"
@@ -484,6 +500,7 @@ def _resolve_replicate(
         align="center",
         line_spacing=line_spacing,
         margins=margins,
+        print_height=print_height,
     )
     return max(1, fixed_width // max(1, unit.width))
 
@@ -505,13 +522,17 @@ def render_text(
     fixed_width: int | None = None,
     replicate: int | str = 1,
     fill_ratio: float = _DEFAULT_FILL_RATIO,
+    print_height: int | None = None,
 ) -> Image.Image:
     """Render multi-line text to a grayscale image sized for the tape width.
 
+    ``print_height`` confines text to a narrower cross-tape band than the full
+    tape print area (self-laminating tape); defaults to the full print area.
+
     ``replicate`` repeats the text that many times along the axis perpendicular
     to its reading direction, producing a single label that stays legible when
-    wrapped around a cable. Without ``rotate`` the copies stack across the tape
-    width (so each shrinks to fit ``print_area_pins / replicate``); with
+    wrapped around a cable. Without ``rotate`` the copies stack across the
+    printable height (so each shrinks to fit ``print_height / replicate``); with
     ``rotate=90`` the copies repeat along the feed axis at full width.
 
     Pass ``replicate="auto"`` to fit as many copies as the tape and font allow
@@ -550,6 +571,7 @@ def render_text(
         line_spacing=line_spacing,
         margins=margins,
         fixed_width=fixed_width,
+        print_height=print_height,
     )
     replicate_kwargs = {
         "font_path": font_path,
@@ -558,6 +580,7 @@ def render_text(
         "line_spacing": line_spacing,
         "margins": margins,
         "fill_ratio": fill_ratio,
+        "print_height": print_height,
     }
 
     if rotate == 0:

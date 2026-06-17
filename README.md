@@ -13,6 +13,9 @@ Python code.
   auto-cut, threshold control, and optional scaling
 - **Text labels** — multi-line text with auto-fit font size, alignment, rotation,
   margins, and PNG preview without printing
+- **Self-laminating tape** — auto-detected from printer status; printing is confined
+  to the narrow white band (~9.8 mm) and centred there, keeping content off the clear
+  laminate flap (text, PNG, and strips)
 - **Multi-label strips** — chain multiple images into one strip with auto-cut or
   half-cut (laminated tape only)
 - **CSV batch printing** — print a list of images from a CSV file as one strip
@@ -135,6 +138,9 @@ brother-ptouch-label "PWR-01" --tape 24mm --replicate 3
 
 # Fill the tape with as many copies as fit at a given font size
 brother-ptouch-label "PWR-01" --tape 24mm --font-size 40 --replicate auto
+
+# Self-laminating tape is auto-detected: text is confined to the white band
+brother-ptouch-label "Cable-01"
 
 # Render a label to PNG without printing
 brother-ptouch-label "Preview" -o label.png --tape 12mm

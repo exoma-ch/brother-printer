@@ -9,7 +9,8 @@ import click
 
 from brother_ptouch_driver import PrintError, TapeWidth, TransportError
 from brother_ptouch_driver.imaging.errors import ImagingError
-from brother_ptouch_label.printing import detect_tape_width, print_text
+from brother_ptouch_driver.protocol.enums import effective_print_pins
+from brother_ptouch_label.printing import detect_status, detect_tape_width, print_text
 from brother_ptouch_label.text import render_text
 
 _TAPE_CHOICES: dict[str, TapeWidth] = {
@@ -221,18 +222,25 @@ def main(
     }
 
     try:
-        tape_width = _resolve_tape(tape, printer=printer)
-    except (PrintError, TransportError) as exc:
-        click.echo(str(exc), err=True)
-        sys.exit(1)
-
-    try:
         if output is not None:
-            image = render_text(label_text, tape_width, **render_kwargs)
+            # Offline preview: render without querying the printer, so it works
+            # with no device connected. Self-laminating banding (auto-detected
+            # from live status) is therefore not applied to PNG previews.
+            tape_width = _resolve_tape(tape, printer=printer)
+            image = render_text(
+                label_text, tape_width, print_height=None, **render_kwargs
+            )
             image.save(output)
             click.echo(f"Wrote {output}.")
             return
 
+        # Print path: one status query gives both tape width and media type, so
+        # self-laminating tape is confined to the printable white band.
+        status = detect_status(printer=printer)
+        tape_width = _TAPE_CHOICES[tape] if tape is not None else status.media_width
+        print_height = effective_print_pins(
+            tape_width, status.media_type, status.tape_color
+        )
         written = print_text(
             label_text,
             tape_width,
@@ -241,6 +249,7 @@ def main(
             threshold=threshold,
             auto_cut=auto_cut,
             half_cut=half_cut,
+            print_height=print_height,
             **render_kwargs,
         )
     except (PrintError, TransportError, ImagingError) as exc:

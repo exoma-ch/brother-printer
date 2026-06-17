@@ -203,6 +203,22 @@ def test_render_text_height_matches_tape(tape_width, rotate):
     assert image.height == tape_width.print_area_pins
 
 
+@pytest.mark.parametrize("rotate", _VALID_ROTATIONS)
+def test_render_text_print_height_confines_to_band(rotate):
+    """print_height confines the rendered cross-tape height to the band."""
+    band = 140
+    image = render_text("Hello", TapeWidth.MM_24, rotate=rotate, print_height=band)
+    assert image.height == band
+
+
+def test_max_font_size_print_height_shrinks_font():
+    """A narrower band yields a smaller auto-fit font than the full tape."""
+    tape = TapeWidth.MM_24
+    full = max_font_size(tape, 1)
+    band = max_font_size(tape, 1, print_height=140)
+    assert band < full
+
+
 def test_render_text_width_grows_with_longer_text():
     """Longer single-line text produces a wider label."""
     tape = TapeWidth.MM_24
@@ -306,7 +322,7 @@ def test_render_text_replicate_shrinks_font_per_copy():
     """Stacked copies use a smaller font than a single full-height label."""
     tape = TapeWidth.MM_36
     single = max_font_size(tape, 1)
-    per_copy = max_font_size(tape, 1, print_extent=tape.print_area_pins // 3)
+    per_copy = max_font_size(tape, 1, print_height=tape.print_area_pins // 3)
     assert per_copy < single
 
 
