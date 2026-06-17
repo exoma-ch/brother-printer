@@ -1,6 +1,6 @@
 [project]
 name = "brother-ptouch-driver"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Open-source CLI and library for Brother PT-E920BT label printing"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,8 +13,13 @@ dependencies = [
 brother-ptouch-driver = "brother_ptouch_driver.cli.main:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+# Package lives in a subdirectory of the repo; point setuptools-scm at the git root.
+raw-options = { root = "../.." }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/brother_ptouch_driver"]

@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Package versions are now derived from the git release tag** (hatch-vcs) instead of hardcoded strings
+  - Both `brother-ptouch-driver` and `brother-ptouch-label` declare `dynamic = ["version"]`; the version reported by `--version` (and `brother_ptouch_driver.__version__`) is computed from the most recent `X.Y.Z` tag, so the release tag is the single source of truth and `--version` no longer drifts from the actual release
+  - Off-tag builds report a development version (e.g. `0.2.1.devN+g<sha>`); a clean `X.Y.Z` is reported only at the exact tag
+
 ### Deprecated
 
 ### Removed

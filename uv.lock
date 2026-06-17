@@ -26,7 +26,6 @@ dev = [
 
 [[package]]
 name = "brother-ptouch-driver"
-version = "0.1.0"
 source = { editable = "packages/brother_ptouch_driver" }
 dependencies = [
     { name = "click" },
@@ -43,7 +42,6 @@ requires-dist = [
 
 [[package]]
 name = "brother-ptouch-label"
-version = "0.1.0"
 source = { editable = "packages/brother_ptouch_label" }
 dependencies = [
     { name = "brother-ptouch-driver" },

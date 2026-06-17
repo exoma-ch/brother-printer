@@ -1,5 +1,7 @@
 """Brother PT-E920BT label printer library and CLI."""
 
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
 from brother_ptouch_driver.imaging.errors import ImageScalingError, ImagingError
 from brother_ptouch_driver.printing import (
     HalfCutNotSupportedError,
@@ -29,7 +31,10 @@ from brother_ptouch_driver.transport.errors import (
     TransportTimeoutError,
 )
 
-__version__ = "0.1.0"
+try:
+    __version__ = _pkg_version("brother-ptouch-driver")
+except PackageNotFoundError:  # pragma: no cover - source tree without install
+    __version__ = "0.0.0+unknown"
 
 discover_printers = discover
 
