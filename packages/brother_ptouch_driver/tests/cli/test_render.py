@@ -1,5 +1,7 @@
 """Tests for CLI status rendering."""
 
+import pytest
+
 from brother_ptouch_driver.cli.render import render_status, status_has_errors
 from brother_ptouch_driver.protocol.decoder import PrinterStatus
 from brother_ptouch_driver.protocol.enums import (
@@ -85,6 +87,35 @@ def test_render_status_self_laminating_media():
     )
     output = render_status(_sample_printer(), status)
     assert "Media:      Self Laminating" in output
+
+
+@pytest.mark.parametrize(
+    ("tape_color", "expected"),
+    [
+        (TapeColor.WHITE_HEAT_SHRINK, "White"),
+        (TapeColor.WHITE_SELF_LAMINATING, "White"),
+        (TapeColor.WHITE_FLEX_ID, "White"),
+        (TapeColor.YELLOW_FLEX_ID, "Yellow"),
+    ],
+)
+def test_render_status_strips_cartridge_suffix_from_colour(tape_color, expected):
+    """Colour bytes whose name repeats the cartridge type drop the suffix.
+
+    The cartridge type already appears on the Media line, so e.g. a flexible-ID
+    white tape renders ``Color: White`` rather than ``Color: White Flex Id``.
+    """
+    status = PrinterStatus(
+        media_width=TapeWidth.MM_24,
+        media_type=MediaType.FLEXIBLE_ID,
+        errors=(),
+        status_type=StatusType.REPLY,
+        phase_type=PhaseType.EDITING,
+        phase_number=0,
+        notification=Notification.NOT_AVAILABLE,
+        tape_color=tape_color,
+    )
+    output = render_status(_sample_printer(), status)
+    assert f"Color:      {expected}\n" in output
 
 
 def test_render_status_unknown_bytes_degrade_gracefully():

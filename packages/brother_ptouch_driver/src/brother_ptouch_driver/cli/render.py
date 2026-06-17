@@ -11,6 +11,17 @@ _PHASE_LABELS: dict[str, str] = {
     "PRINTING": "Printing",
 }
 
+# Colour bytes whose enum name carries a cartridge-type suffix (heat-shrink,
+# self-laminating, flexible ID) that is already conveyed by the Media line;
+# shown here with just the colour. The colour-shade suffixes (_D/_S/_F) are
+# deliberately left intact since the Media line does not carry them.
+_COLOR_LABELS: dict[str, str] = {
+    "WHITE_HEAT_SHRINK": "White",
+    "WHITE_SELF_LAMINATING": "White",
+    "WHITE_FLEX_ID": "White",
+    "YELLOW_FLEX_ID": "Yellow",
+}
+
 
 def _format_enum(value: IntEnum | int) -> str:
     """Friendly name for a known enum member, else ``unknown (0xNN)``."""
@@ -28,6 +39,10 @@ def _format_tape_width(status: PrinterStatus) -> str:
 def _format_color(status: PrinterStatus) -> str:
     if status.tape_color == TapeColor.NO_TAPE:
         return "No tape"
+    if isinstance(status.tape_color, IntEnum):
+        return _COLOR_LABELS.get(
+            status.tape_color.name, _format_enum(status.tape_color)
+        )
     return _format_enum(status.tape_color)
 
 

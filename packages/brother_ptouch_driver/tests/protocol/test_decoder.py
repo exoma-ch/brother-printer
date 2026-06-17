@@ -100,6 +100,12 @@ def test_decode_status_self_laminating_media():
     assert status.media_type == MediaType.SELF_LAMINATING
 
 
+def test_decode_status_white_self_laminating_color():
+    """decode_status() recognises the field-reported self-laminating white byte."""
+    status = decode_status(_build_status(tape_color=0x80))
+    assert status.tape_color == TapeColor.WHITE_SELF_LAMINATING
+
+
 def test_decode_status_unknown_bytes_degrade_to_raw_int():
     """Undocumented media/colour bytes return the raw int rather than raising."""
     status = decode_status(_build_status(media_type=0x99, tape_color=0xAB))

@@ -121,6 +121,11 @@ class TapeColor(IntEnum):
     PINK_F = 0x61
     BLUE_F = 0x62
     WHITE_HEAT_SHRINK = 0x70
+    # Not in Brother's published colour table; reported by hardware in the field
+    # for white self-laminating tape (TZe-SL251). The plain laminated white
+    # tape (TZe-S251) reports WHITE (0x01) on the same printer, so 0x80 is the
+    # self-laminating variant. See issue #39.
+    WHITE_SELF_LAMINATING = 0x80
     WHITE_FLEX_ID = 0x90
     YELLOW_FLEX_ID = 0x91
     CLEANING = 0xF0
