@@ -3,6 +3,15 @@
 # This file is git-tracked and preserved during devcontainer upgrades.
 # Add team-shared recipes here that everyone on the project should use.
 # ===============================================================================
+
+# ===============================================================================
+# SETTINGS
+# ===============================================================================
+
+# Forward recipe arguments as real shell positional parameters ("$@") so that
+# quoted, space-containing arguments survive intact (e.g. `just label "Flex ID"`).
+set positional-arguments
+
 # ===============================================================================
 # PROJECT VARIABLES
 # ===============================================================================
@@ -131,27 +140,27 @@ alias l := label
 # List connected PT-E920BT printers over USB
 [group('cli')]
 discover *args:
-    uv run brother-ptouch-driver discover {{ args }}
+    uv run brother-ptouch-driver discover "$@"
 
 # Show live printer status (loaded tape, errors)
 [group('cli')]
 printer-status *args:
-    uv run brother-ptouch-driver status {{ args }}
+    uv run brother-ptouch-driver status "$@"
 
 # List supported tape widths and printable pixel dimensions
 [group('cli')]
 tapes *args:
-    uv run brother-ptouch-driver info tapes {{ args }}
+    uv run brother-ptouch-driver info tapes "$@"
 
 # Print an image label, e.g. `just print qr.png --tape 12mm`
 [group('cli')]
 print *args:
-    uv run brother-ptouch-driver print {{ args }}
+    uv run brother-ptouch-driver print "$@"
 
 # Print a text label, e.g. `just label "Hello" --tape 12mm`
 [group('cli')]
 label *args:
-    uv run brother-ptouch-label {{ args }}
+    uv run brother-ptouch-label "$@"
 
 # -------------------------------------------------------------------------------
 # SETUP
@@ -160,7 +169,7 @@ label *args:
 # Install libusb + udev rule and grant non-root USB access (Linux)
 [group('setup')]
 setup-usb *args:
-    ./packaging/scripts/setup-usb.sh {{ args }}
+    ./packaging/scripts/setup-usb.sh "$@"
 
 # ===============================================================================
 # PROJECT-SPECIFIC RECIPES
