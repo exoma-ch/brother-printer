@@ -256,12 +256,10 @@ def test_print_image_self_laminating_confines_to_band(
     )
     mock_image_to_raster.return_value = [b"\x00" * 70] * 60
 
-    print_image(Image.new("L", (80, self_laminating_band_pins()), 255), TapeWidth.MM_24)
+    band = self_laminating_band_pins(TapeWidth.MM_24)
+    print_image(Image.new("L", (80, band), 255), TapeWidth.MM_24)
 
-    assert (
-        mock_image_to_raster.call_args.kwargs["effective_height"]
-        == self_laminating_band_pins()
-    )
+    assert mock_image_to_raster.call_args.kwargs["effective_height"] == band
 
 
 @patch("brother_ptouch_driver.printing.decode_status")

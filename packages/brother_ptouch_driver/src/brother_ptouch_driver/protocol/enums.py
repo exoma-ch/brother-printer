@@ -133,18 +133,33 @@ class TapeColor(IntEnum):
     INCOMPATIBLE = 0xFF
 
 
-# Self-laminating tape exposes only a narrow printable white strip; the rest is
-# a clear flap that wraps the cable. The strip height is a fixed physical size
-# (~9.8 mm, bounded by the minimum cable circumference) — the same on 24 mm and
-# 36 mm tape; only the clear flap grows with tape width. 9.8 mm is ~139 pins at
-# 360 dpi, rounded up to a tidy 140 px. See issue #41 and docs/vendor/tze-tape-widths.md.
-SELF_LAMINATING_BAND_MM = 9.8
-SELF_LAMINATING_BAND_PINS = 140
+# Self-laminating tape exposes only a narrow printable white strip near one edge;
+# the rest is a clear laminate flap that wraps the cable. Printing across the full
+# print area lands content on the flap, so it is confined to the strip.
+#
+# The strip height is NOT a single fixed physical size: hardware measurement on a
+# PT-E920BT (issue #50) shows it scales with tape width, so the band is a per-width
+# table measured per cartridge, mirroring _TAPE_WIDTH_PINS. Only 24 mm and 36 mm
+# self-laminating cartridges are available to measure; widths absent from the table
+# are not confined (the full print area is used). Values are pins at 360 dpi.
+#
+# The band is anchored at the top edge (pack_raster_lines row 0); the printer's own
+# ~1 mm unprintable top margin acts as the top gap, so the band is the usable strip
+# height with no extra offset. The white backing is ~2 mm taller than the band
+# (~1 mm gap top and bottom). See docs/vendor/tze-tape-widths.md.
+_SELF_LAMINATING_BAND_PINS: dict[TapeWidth, int] = {
+    TapeWidth.MM_24: 120,  # 8.5 mm, hardware-measured (~10 mm white backing)
+    TapeWidth.MM_36: 156,  # 11 mm, hardware-measured (TZe-SL261, ~13 mm white backing)
+}
 
 
-def self_laminating_band_pins() -> int:
-    """Printable strip height in pins on self-laminating tape (~9.8 mm → 140 px)."""
-    return SELF_LAMINATING_BAND_PINS
+def self_laminating_band_pins(tape_width: TapeWidth) -> int:
+    """Printable white-strip height in pins for self-laminating tape of this width.
+
+    The band scales with tape width (issue #50). Widths without a measured band
+    fall back to the full print area, i.e. no confinement.
+    """
+    return _SELF_LAMINATING_BAND_PINS.get(tape_width, tape_width.print_area_pins)
 
 
 def is_self_laminating(
@@ -174,7 +189,7 @@ def effective_print_pins(
     media use the full tape print area.
     """
     if is_self_laminating(media_type, tape_color):
-        return min(self_laminating_band_pins(), tape_width.print_area_pins)
+        return min(self_laminating_band_pins(tape_width), tape_width.print_area_pins)
     return tape_width.print_area_pins
 
 
