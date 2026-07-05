@@ -1,8 +1,8 @@
 # Canonical repository labels.
 # Single source of truth — referenced by:
 #   - uv run setup-labels                   (provision labels on a repo)
-#   - .cursor/skills/issue_triage/SKILL.md  (triage label check)
-#   - .cursor/skills/issue_create/SKILL.md  (agent label mapping)
+#   - .claude/skills/issue_triage/SKILL.md  (triage label check)
+#   - .claude/skills/issue_create/SKILL.md  (agent label mapping)
 #   - .github/ISSUE_TEMPLATE/*.yml          (template label values)
 #
 # Label reconciliation:
@@ -110,26 +110,6 @@ color = "1d76db"
 [[labels]]
 name = "area:workspace"
 description = "Workspace tooling, justfile, templates"
-color = "1d76db"
-
-[[labels]]
-name = "area:transport"
-description = "USB/Bluetooth/network transport layer"
-color = "1d76db"
-
-[[labels]]
-name = "area:protocol"
-description = "P-touch raster protocol encoder/decoder"
-color = "1d76db"
-
-[[labels]]
-name = "area:imaging"
-description = "Image-to-raster pipeline, QR quality"
-color = "1d76db"
-
-[[labels]]
-name = "area:cli"
-description = "Command-line interface and entry points"
 color = "1d76db"
 
 # ── Effort ────────────────────────────────────────────────────────────────────

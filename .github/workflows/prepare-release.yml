@@ -29,7 +29,7 @@ permissions:
 jobs:
   validate:
     name: Validate Release Preparation
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       version: ${{ steps.vars.outputs.version }}
@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           ref: dev
           fetch-depth: 0
@@ -144,7 +144,7 @@ jobs:
   prepare:
     name: Prepare Release Branch
     needs: validate
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vig-os/devcontainer:${{ needs.validate.outputs.image_tag }}
       env:
@@ -161,20 +161,20 @@ jobs:
     steps:
       - name: Generate Commit App Token
         id: commit_app_token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859  # v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3
         with:
-          app-id: ${{ secrets.COMMIT_APP_ID }}
+          client-id: ${{ secrets.COMMIT_APP_CLIENT_ID }}
           private-key: ${{ secrets.COMMIT_APP_PRIVATE_KEY }}
 
       - name: Generate Release App Token
         id: release_app_token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859  # v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
       - name: Checkout dev branch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           ref: dev
           fetch-depth: 0
@@ -197,6 +197,11 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
+          # Normalize any dated `## [X.Y.Z]` heading left by a prior candidate→final
+          # pass on this base version back to `- TBD` before freezing, so prepare/
+          # release stay idempotent on a reused release branch (#612). No-op when
+          # the heading is already TBD or absent.
+          prepare-changelog reset-version "$VERSION" CHANGELOG.md
           prepare-changelog prepare "$VERSION" CHANGELOG.md
 
       - name: Extract CHANGELOG content for PR body
@@ -205,7 +210,11 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
-          CHANGELOG_CONTENT=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d')
+          # Anchor the range patterns to start-of-line so only real column-0
+          # version headings delimit the section. An unanchored "## [" also
+          # matches inline backtick-quoted headings inside bullets (e.g.
+          # `## [X.Y.Z] - TBD`), which truncated the PR body early (#620).
+          CHANGELOG_CONTENT=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '$d')
           {
             echo "changelog<<CHANGELOGEOF"
             echo "$CHANGELOG_CONTENT"
@@ -231,10 +240,29 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.commit_app_token.outputs.token }}
           RELEASE_BRANCH: ${{ needs.validate.outputs.release_branch }}
+          PREPARE_START_SHA: ${{ steps.pre_state.outputs.prepare_start_sha }}
         run: |
           set -euo pipefail
-          DEV_SHA=$(retry --retries 3 --backoff 5 --max-backoff 60 -- \
-            gh api "repos/${{ github.repository }}/git/ref/heads/dev" --jq '.object.sha')
+          # Wait for dev to advance past the pre-freeze SHA before branching (#617).
+          # The freeze commit-action updates dev's ref, but a REST ref read can
+          # briefly return the stale pre-freeze SHA (read-after-write lag); branching
+          # then would create release/X.Y.Z without the freeze. `retry` only retries
+          # on failure, so a stale-but-successful read slips through -- assert the SHA
+          # actually changed instead of trusting the first read.
+          DEV_SHA=""
+          for attempt in $(seq 1 8); do
+            DEV_SHA=$(retry --retries 3 --backoff 5 --max-backoff 60 -- \
+              gh api "repos/${{ github.repository }}/git/ref/heads/dev" --jq '.object.sha')
+            if [ "$DEV_SHA" != "$PREPARE_START_SHA" ]; then
+              break
+            fi
+            echo "dev still at pre-freeze SHA $DEV_SHA (attempt $attempt/8); waiting for freeze to propagate..."
+            sleep 5
+          done
+          if [ "$DEV_SHA" = "$PREPARE_START_SHA" ]; then
+            echo "ERROR: dev did not advance past pre-freeze SHA $PREPARE_START_SHA; freeze commit not visible"
+            exit 1
+          fi
           retry --retries 3 --backoff 5 --max-backoff 60 -- \
             gh api "repos/${{ github.repository }}/git/refs" \
             -f ref="refs/heads/$RELEASE_BRANCH" \
@@ -258,34 +286,11 @@ jobs:
             gh api "repos/${{ github.repository }}/git/ref/heads/$RELEASE_BRANCH" --jq '.object.sha'
           echo "✓ Release branch ref verified as resolvable"
 
-      - name: Strip empty Unreleased section for release branch
-        run: |
-          set -euo pipefail
-          python3 -c "
-          import re
-          from pathlib import Path
-          content = Path('CHANGELOG.md').read_text()
-          content = re.sub(
-              r'## Unreleased\s*\n(?:### \w+\s*\n\s*)*\n*(?=## \[)',
-              '',
-              content,
-          )
-          Path('CHANGELOG.md').write_text(content)
-          "
-
-      - name: Commit stripped CHANGELOG to release branch via API
-        uses: vig-os/commit-action@1bc004353d08d9332a0cb54920b148256220c8e0  # v0.2.0
-        env:
-          GH_TOKEN: ${{ steps.commit_app_token.outputs.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          TARGET_BRANCH: refs/heads/${{ needs.validate.outputs.release_branch }}
-          MAX_ATTEMPTS: "3"
-          COMMIT_MESSAGE: |-
-            chore: prepare release ${{ needs.validate.outputs.version }}
-
-            Strip empty Unreleased section from release branch.
-            Release date TBD (set during finalization).
-          FILE_PATHS: CHANGELOG.md
+      # The release branch keeps the empty ## Unreleased section (no stripping).
+      # main therefore retains ## Unreleased above the dated release, matching
+      # dev, so the section is stable common context in the eventual main/dev
+      # sync merge and can never be silently dropped (#590). Keep a Changelog
+      # endorses an always-present Unreleased section.
 
       - name: Create draft PR to main
         id: pr
@@ -296,12 +301,26 @@ jobs:
           CHANGELOG_CONTENT: ${{ steps.changelog.outputs.changelog }}
         run: |
           set -euo pipefail
-          PR_BODY="# Release $VERSION
+
+          # GitHub caps PR bodies at 65536 chars; a large frozen release
+          # changelog can overflow it (#810/#857). Truncate at a line boundary
+          # and point to the full CHANGELOG.md on the release branch when it
+          # does. Mirrors the upstream prepare-release cap (#812).
+          MAX_BODY=65000
+          HEADER="# Release $VERSION
 
           This PR prepares release $VERSION for merge to main.
 
-          $CHANGELOG_CONTENT
           "
+          PR_BODY="${HEADER}${CHANGELOG_CONTENT}"$'\n'
+
+          if [ "${#PR_BODY}" -gt "$MAX_BODY" ]; then
+            NOTE=$(printf '\n\n_Changelog truncated to fit GitHub'"'"'s %s-char PR-body limit; see `CHANGELOG.md` on `%s` for the full entry._' "$MAX_BODY" "$RELEASE_BRANCH")
+            budget=$(( MAX_BODY - ${#HEADER} - ${#NOTE} ))
+            TRUNCATED="${CHANGELOG_CONTENT:0:budget}"
+            TRUNCATED="${TRUNCATED%$'\n'*}"
+            PR_BODY="${HEADER}${TRUNCATED}${NOTE}"
+          fi
 
           EXISTING_PR_URL=$(retry --retries 3 --backoff 5 --max-backoff 60 -- \
             gh pr list --head "$RELEASE_BRANCH" --base main --state open --json url --jq '.[0].url // empty')

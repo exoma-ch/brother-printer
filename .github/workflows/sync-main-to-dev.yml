@@ -19,8 +19,11 @@
 # NOTE: This workspace workflow is intentionally decoupled from upstream
 # `.github/workflows/sync-main-to-dev.yml` and maintained separately.
 #
-# With the new CHANGELOG flow, dev already has ## Unreleased (created during
-# prepare-release), so no CHANGELOG reset is needed here.
+# No CHANGELOG reset is needed here. prepare-release never strips ## Unreleased
+# from the release branch, so main and dev both carry it and it is stable common
+# context in the merge base. main only edits the [X.Y.Z] line at finalization;
+# the merge therefore preserves ## Unreleased instead of silently dropping it
+# (#590).
 #
 # Triggers: push to main · workflow_dispatch
 
@@ -41,13 +44,13 @@ permissions:
 jobs:
   resolve-image:
     name: Resolve image tag
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     outputs:
       image-tag: ${{ steps.resolve.outputs.image-tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           sparse-checkout: |
             .vig-os
@@ -61,7 +64,7 @@ jobs:
   check:
     name: Check if dev is up to date
     needs: [resolve-image]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vig-os/devcontainer:${{ needs.resolve-image.outputs.image-tag }}
     timeout-minutes: 5
@@ -73,7 +76,7 @@ jobs:
 
     steps:
       - name: Checkout and fetch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
 
@@ -106,7 +109,7 @@ jobs:
     name: Merge main into dev via PR
     needs: [resolve-image, check]
     if: needs.check.outputs.up_to_date != 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vig-os/devcontainer:${{ needs.resolve-image.outputs.image-tag }}
     timeout-minutes: 10
@@ -123,13 +126,13 @@ jobs:
     steps:
       - name: Generate Commit App Token
         id: commit-app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859  # v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3
         with:
-          app-id: ${{ secrets.COMMIT_APP_ID }}
+          client-id: ${{ secrets.COMMIT_APP_CLIENT_ID }}
           private-key: ${{ secrets.COMMIT_APP_PRIVATE_KEY }}
 
       - name: Checkout dev
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           ref: dev
           fetch-depth: 0
@@ -155,9 +158,9 @@ jobs:
       - name: Generate Release App Token
         if: steps.recheck.outputs.up_to_date != 'true'
         id: release-app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859  # v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
       - name: Check for existing open sync PR
