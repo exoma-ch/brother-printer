@@ -8,3 +8,7 @@ ba = "ba"
 unexcepted = "unexcepted"
 # version-check.sh duration placeholder (#759): 'Nd' = N days (cf. Nw/Nh/Nm)
 Nd = "Nd"
+
+[files]
+# Binary golden fixtures for the printer protocol tests — not prose
+extend-exclude = ["*.bin"]
