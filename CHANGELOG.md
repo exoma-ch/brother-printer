@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Golden-image comparison is no longer byte-for-byte. Byte-exactness against a font rasterizer was only ever portable because development and CI shared one container image; the dev shell and a hosted CI runner differ by design (devkit forwards `UV_PYTHON` only on a NixOS runner), which shifts glyph advances by 1-3px and ~8px at the 48px default cap. The goldens now assert exact height (set by tape width and band confinement), width within a proportional tolerance, ink band count, and scale-normalized ink geometry — so alignment, rotation, line count, tape width and the font-size cap are all still guarded, with thresholds calibrated against the committed fixtures and pinned by tests of the comparator itself
   - Contributor-facing only — the published driver and its CLIs are unchanged. Linux USB setup for end users is unchanged; see [docs/install/linux-usb.md](docs/install/linux-usb.md) for the revised development-shell section
 
+### Fixed
+
+- **Renovate configuration pointed at an unsubstituted scaffold placeholder** ([#59](https://github.com/exoma-ch/brother-printer/issues/59))
+  - `renovate.json` extended `github>OWNER/REPO//.github/renovate-default`, the literal template placeholder, so Renovate could not resolve the shared preset (`Cannot find preset's package`) and stopped opening dependency PRs for this repository as a precaution
+  - Point it at `github>exoma-ch/brother-printer//.github/renovate-default`. The preset itself was always present at `.github/renovate-default.json`; only the reference to it was wrong
+
 ## [0.2.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.2.0) - 2026-06-17
 
 ### Added
