@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw, ImageFont
+from render_compare import assert_render_close
 
 from brother_ptouch_driver.imaging.errors import ImagingError
 from brother_ptouch_driver.imaging.raster import image_to_raster
@@ -405,8 +406,10 @@ def test_render_text_default_caps_font_size(golden_font: Path) -> None:
         TapeWidth.MM_36,
         font_path=str(golden_font),
     )
-    assert actual.size == expected.size
-    assert actual.tobytes() == expected.tobytes()
+    # The cap is what this guards: if it stopped applying, the auto-fitted size
+    # for 36 mm would be far above 48 px and the width would blow well past the
+    # tolerance. Exact height still pins the tape geometry.
+    assert_render_close(actual, expected, label="default_cap_36mm.png")
 
 
 def test_render_text_default_font_size_uses_fitted_on_small_tape():
