@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- **Development environment upgraded to vigOS devkit 1.18.0 and moved to the Nix dev shell** ([#60](https://github.com/exoma-ch/brother-printer/issues/60))
+  - The repo was scaffolded from devkit 0.3.4 and never upgraded, so it had drifted ~26 releases behind, across the Debian-to-Nix re-platform of the shared devcontainer image
+  - `.devcontainer/` is gone; the toolchain now comes from `flake.nix` + `.envrc` (`direnv allow`, or `nix develop`). `libusb-1.0` is declared as a project package and placed on `LD_LIBRARY_PATH`, because pyusb resolves its backend through `ctypes.util.find_library` at import time. Hardware verification therefore runs against the host USB tree directly, with no device passthrough, no rootless-Podman uid remapping and no container-specific udev rule
+  - This was the forcing reason for the move: the 1.18.0 image is Nix-built with no `apt`, `libusb` is not on the shared toolchain list, and container mode scaffolds no project flake in which to declare it
+  - Agent skills moved from `.cursor/` to `.claude/`; the hook suite now resolves `ruff`, `typos`, `pymarkdown`, `shellcheck`, `actionlint` and `nixfmt` from the dev shell instead of pre-built wheels, and gains commit-message, branch-name and agent-identity validation
+  - The release-train and `gh` helper recipes are vendored into `justfile.project`: devkit defines them only under `.devcontainer/`, which this mode does not ship. The release workflows themselves are unaffected (reported upstream as vig-os/devkit#1823)
+  - Contributor-facing only — the published driver and its CLIs are unchanged. Linux USB setup for end users is unchanged; see [docs/install/linux-usb.md](docs/install/linux-usb.md) for the revised development-shell section
+
 ## [0.2.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.2.0) - 2026-06-17
 
 ### Added

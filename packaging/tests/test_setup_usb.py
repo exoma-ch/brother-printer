@@ -16,14 +16,14 @@ import pytest
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+# Repo-owned scripts only. The .devcontainer/scripts/* lifecycle scripts used to
+# be listed here too, but they were devkit-managed (so the guard was a local edit
+# that every upgrade reverted) and the repo moved to direnv mode, removing them
+# outright. devkit now ships the ``${BASH_SOURCE[0]:-$0}`` guard itself. Refs: #60
 SCRIPTS = [
     "packaging/scripts/setup-usb.sh",
     "docs/vendor/convert.sh",
     "docs/vendor/fetch.sh",
-    ".devcontainer/scripts/post-create.sh",
-    ".devcontainer/scripts/post-attach.sh",
-    ".devcontainer/scripts/initialize.sh",
-    ".devcontainer/scripts/version-check.sh",
 ]
 
 

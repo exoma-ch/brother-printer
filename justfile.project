@@ -43,7 +43,7 @@ format:
 # Run pre-commit hooks on all files
 [group('quality')]
 precommit:
-    uv run pre-commit run --all-files
+    prek run --all-files
 
 # -------------------------------------------------------------------------------
 # TESTING
@@ -198,3 +198,165 @@ setup-usb *args:
 # [group('release')]
 # publish-candidate version:
 #     gh workflow run release.yml --ref release/{{ version }} -f "version={{ version }}" -f "release-kind=candidate" -f "dry-run=false"
+
+# ===============================================================================
+# VENDORED FROM DEVKIT — .devcontainer/justfile.gh @ 1.18.0
+# ===============================================================================
+#
+# devkit defines the release-train dispatchers and the gh/git helpers ONLY in
+# .devcontainer/justfile.gh, which direnv mode does not ship (the repo-root
+# justfile carries just `help`, `doctor` and `with-native-libs`). The release
+# WORKFLOWS are scaffolded in every mode and are mode-aware, so the train itself
+# is unaffected — but its local front-end disappeared with .devcontainer/.
+#
+# These are thin `gh workflow run` dispatchers; they are copied verbatim so
+# `just prepare-release` etc. keep working. They are now consumer-owned and will
+# NOT track devkit: re-fold them by hand when devkit changes them. Tracked
+# upstream as vig-os/devkit#1823 (the 1.18.0 /devkit:release-* plugin skills
+# depend on these same recipes and are likewise unusable in direnv/bare mode).
+#
+# Refs: #60
+# -------------------------------------------------------------------------------
+# ALIASES
+# -------------------------------------------------------------------------------
+
+alias gh-i := gh-issues
+
+# List open issues and PRs grouped by milestone
+[group('github')]
+gh-issues:
+    #!/usr/bin/env bash
+    gh-issues
+
+# -------------------------------------------------------------------------------
+# GIT HELPERS
+# -------------------------------------------------------------------------------
+
+# Pretty one-line git log (last 20 commits)
+[group('git')]
+gh-log:
+    git log --oneline -20
+
+# Show current branch + list recent branches
+[group('git')]
+gh-branch:
+    #!/usr/bin/env bash
+    echo "Current: $(git branch --show-current)"
+    echo ""
+    echo "Recent branches:"
+    git branch -a | head -15
+
+# >>> devkit:release — excised from the scaffold when the release feature is disabled (#1656)
+# -------------------------------------------------------------------------------
+# RELEASE WORKFLOW DISPATCH HELPERS
+# -------------------------------------------------------------------------------
+
+# Preview the bot changelog entries the next release would synthesize (#1423)
+[group('release')]
+changelog-preview:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export GITHUB_REPOSITORY_URL="${GITHUB_REPOSITORY_URL:-$(gh repo view --json url --jq .url)}"
+    synthesize-bot-changelog --dry-run
+
+# Prepare release branch for testing (step 1)
+[group('release')]
+prepare-release version ref="" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Trigger the prepare-release workflow via GitHub Actions
+    # The workflow handles: validate inputs, create release branch, prepare CHANGELOG, create draft PR
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="dev"
+    fi
+    gh workflow run prepare-release.yml --ref "$REF" -f "version={{ version }}" {{ flags }}
+    echo ""
+    echo "✓ Release preparation workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow prepare-release.yml"
+
+# Prepare a hotfix release branch cut from main (patch of the latest tag on main; #1621)
+[group('release')]
+prepare-hotfix version ref="" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Trigger the prepare-hotfix workflow via GitHub Actions. The workflow
+    # checks out main itself; REF only selects which copy of the workflow file
+    # runs (dev by default: the file reaches main only through a normal train).
+    # The workflow handles: validate version/train state, cut release/X.Y.Z from
+    # main, seed an empty CHANGELOG section, create draft PR
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="dev"
+    fi
+    gh workflow run prepare-hotfix.yml --ref "$REF" -f "version={{ version }}" {{ flags }}
+    echo ""
+    echo "✓ Hotfix preparation workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow prepare-hotfix.yml"
+
+# Finalize and publish release via GitHub Actions workflow (step 3, after testing)
+[group('release')]
+finalize-release version ref="" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Trigger the release workflow via GitHub Actions
+    # The workflow handles: finalize CHANGELOG, create final tag, publish
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="release/{{ version }}"
+    fi
+    gh workflow run release.yml --ref "$REF" -f "version={{ version }}" -f "release-kind=final" {{ flags }}
+    echo ""
+    echo "✓ Release workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow release.yml"
+
+# Promote final release: publish draft GitHub Release, merge release PR
+[group('release')]
+promote-release version ref="" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="release/{{ version }}"
+    fi
+    gh workflow run promote-release.yml --ref "$REF" -f "version={{ version }}" {{ flags }}
+    echo ""
+    echo "✓ Promote-release workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow promote-release.yml"
+
+# Publish release candidate via GitHub Actions workflow
+[group('release')]
+publish-candidate version ref="" create-release="false" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Trigger release workflow in candidate mode (default mode in workflow)
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="release/{{ version }}"
+    fi
+    gh workflow run release.yml --ref "$REF" -f "version={{ version }}" -f "release-kind=candidate" -f "create-release={{ create-release }}" {{ flags }}
+    echo ""
+    echo "✓ Candidate release workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow release.yml"
+
+# Abandon a finalized-but-unpublished release: delete draft Release + tag, close PR, delete branch (draft-only, enforced server-side)
+[group('release')]
+abandon-release version ref="" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Safe only while the X.Y.Z Release is a DRAFT — the workflow hard-refuses
+    # a published release (publishing tombstones the tag name permanently).
+    REF="{{ ref }}"
+    if [ -z "$REF" ]; then
+        REF="dev"
+    fi
+    gh workflow run abandon-release.yml --ref "$REF" -f "version={{ version }}" {{ flags }}
+    echo ""
+    echo "✓ Abandon workflow triggered for version {{ version }}"
+    echo "Monitor progress: gh run list --workflow abandon-release.yml"
+
+# Reset CHANGELOG Unreleased section (after merging release to dev)
+[group('release')]
+reset-changelog:
+    prepare-changelog reset CHANGELOG.md
+# <<< devkit:release
