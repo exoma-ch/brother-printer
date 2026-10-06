@@ -135,20 +135,52 @@ uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
 
 ### Host setup
 
-Install the standard rule and join `plugdev` — the same setup an end user
-performs, and all that is needed now that nothing runs in a container:
+The dev shell supplies `libusb`, so the only thing still needed from the host is
+permission to open the device node. Without it, enumeration succeeds and
+`open()` fails with permission denied.
+
+**On a conventional distribution**, this is the same setup an end user performs
+— install the rule and join `plugdev`:
 
 ```bash
 ./packaging/scripts/setup-usb.sh        # or: just setup-usb
 ```
 
-See [Quick setup (script)](#quick-setup-script) above for what it does and
-[Prerequisites](#prerequisites) for the manual equivalent. Unplug and replug the
-printer afterwards, then confirm:
+See [Quick setup (script)](#quick-setup-script) for what it does and
+[Prerequisites](#prerequisites) for the manual equivalent.
+
+**On NixOS, that script does not apply.** It installs `libusb` through
+`apt`/`dnf`/`pacman`/`zypper`, which NixOS has none of, and it writes to
+`/etc/udev/rules.d`, which is a read-only symlink into the Nix store. There is
+also no `plugdev` group unless the system configuration creates one. Declare the
+rule in your system configuration instead and rebuild — either inline:
+
+```nix
+services.udev.extraRules = ''
+  SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", TAG+="uaccess"
+'';
+```
+
+or by adding a package carrying
+[99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules) to
+`services.udev.packages`. `TAG+="uaccess"` grants the locally logged-in user
+access through systemd-logind, which avoids needing a `plugdev` group at all.
+
+**For a single verification run**, with no system change, chmod the node after
+plugging the printer in:
 
 ```bash
-lsusb -d 04f9:                          # PT-E920BT is 04f9:224b
-ls -l /dev/bus/usb/<bus>/<device>       # expect crw-rw-r-- and plugdev group
+lsusb -d 04f9:                          # PT-E920BT is 04f9:224b; note Bus/Device
+sudo chmod 666 /dev/bus/usb/<bus>/<device>
+```
+
+This is lost on replug, which is fine for a one-off hardware check and avoids a
+rebuild.
+
+Afterwards, confirm the node is openable:
+
+```bash
+ls -l /dev/bus/usb/<bus>/<device>       # expect crw-rw-rw- or crw-rw-r--+
 ```
 
 ### Verify
