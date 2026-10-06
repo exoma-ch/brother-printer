@@ -1,2 +1,8 @@
 # Brother P-touch USB devices — non-root access on Linux
+#
+# plugdev membership is the load-bearing grant. TAG+="uaccess" is the modern
+# mechanism — systemd-logind puts an ACL for the active local session's user on
+# the node — but it only works where systemd's seat rules (71-seat.rules,
+# 73-seat-late.rules) are part of the assembled rule set; on NixOS they are not,
+# and the tag is inert. See docs/install/linux-usb.md. Refs: #63
 SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", MODE="0664", GROUP="plugdev", TAG+="uaccess"

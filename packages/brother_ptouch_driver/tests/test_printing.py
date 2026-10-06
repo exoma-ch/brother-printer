@@ -177,6 +177,134 @@ def test_print_strip_expands_copies_into_pages(
     )
 
 
+@patch("brother_ptouch_driver.printing.encode_strip_job")
+@patch("brother_ptouch_driver.printing.image_to_raster")
+@patch("brother_ptouch_driver.printing.decode_status")
+@patch("brother_ptouch_driver.printing.status_request", return_value=b"\x1biS")
+@patch("brother_ptouch_driver.printing.UsbTransport")
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_forwards_chunk_size(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """print_strip() forwards chunk_size to encode_strip_job()."""
+    from brother_ptouch_driver import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    raster = [b"\x00" * 70] * 2
+    mock_image_to_raster.return_value = raster
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    written = print_strip(
+        [image], TapeWidth.MM_24, copies=4, half_cut=True, chunk_size=2
+    )
+
+    # One job per chunk: the printer applies a job's first-page cut settings to
+    # the whole job, so half-cut and full-cut pages cannot share one job.
+    assert mock_encode_strip_job.call_count == 2
+    for call in mock_encode_strip_job.call_args_list:
+        args, kwargs = call
+        assert args[0] == TapeWidth.MM_24
+        assert args[1] == [raster] * 2
+        assert kwargs == {"auto_cut": True, "half_cut": True, "chunk_size": 2}
+    assert transport.write.call_count == 3  # status + one job per chunk
+    assert written == 200
+
+
+@patch("brother_ptouch_driver.printing.encode_strip_job")
+@patch("brother_ptouch_driver.printing.image_to_raster")
+@patch("brother_ptouch_driver.printing.decode_status")
+@patch("brother_ptouch_driver.printing.status_request", return_value=b"\x1biS")
+@patch("brother_ptouch_driver.printing.UsbTransport")
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_chunks_without_half_cut_use_cut_each_n(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """Full-cut-only chunking needs no job split; the printer counts the pages."""
+    from brother_ptouch_driver import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    raster = [b"\x00" * 70] * 2
+    mock_image_to_raster.return_value = raster
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    print_strip([image], TapeWidth.MM_24, copies=4, half_cut=False, chunk_size=2)
+
+    mock_encode_strip_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        [raster] * 4,
+        auto_cut=True,
+        half_cut=False,
+        cut_each_n=2,
+    )
+    assert transport.write.call_count == 2  # status + one job
+
+
+@patch("brother_ptouch_driver.printing.encode_strip_job")
+@patch("brother_ptouch_driver.printing.image_to_raster")
+@patch("brother_ptouch_driver.printing.decode_status")
+@patch("brother_ptouch_driver.printing.status_request", return_value=b"\x1biS")
+@patch("brother_ptouch_driver.printing.UsbTransport")
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_chunks_split_a_short_final_chunk(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """A trailing partial chunk becomes its own job, sized to what is left."""
+    from brother_ptouch_driver import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    raster = [b"\x00" * 70] * 2
+    mock_image_to_raster.return_value = raster
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    print_strip([image], TapeWidth.MM_24, copies=5, half_cut=True, chunk_size=2)
+
+    page_counts = [len(call.args[1]) for call in mock_encode_strip_job.call_args_list]
+    chunk_sizes = [
+        call.kwargs["chunk_size"] for call in mock_encode_strip_job.call_args_list
+    ]
+    assert page_counts == [2, 2, 1]
+    assert chunk_sizes == [2, 2, 1]
+
+
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_rejects_invalid_chunk_size(mock_discover):
+    """print_strip() rejects chunk_size < 1 before touching the USB bus."""
+    from brother_ptouch_driver import print_strip
+
+    image = Image.new("L", (80, 80), 255)
+    with pytest.raises(ValueError, match="chunk_size"):
+        print_strip([image], TapeWidth.MM_24, chunk_size=0)
+
+    mock_discover.assert_not_called()
+
+
 @patch("brother_ptouch_driver.printing.encode_job")
 @patch("brother_ptouch_driver.printing.image_to_raster")
 @patch("brother_ptouch_driver.printing.decode_status")

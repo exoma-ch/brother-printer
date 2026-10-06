@@ -195,6 +195,145 @@ def test_encode_strip_job_three_page_golden():
     assert job == golden
 
 
+def _half_cut_block() -> bytes:
+    """Control block of a page that ends in a half cut."""
+    return set_mode(auto_cut=False) + advanced_mode(half_cut=True, no_chain=True)
+
+
+def _full_cut_block() -> bytes:
+    """Control block of a page that ends in a full cut."""
+    return (
+        set_mode(auto_cut=True)
+        + cut_each(1)
+        + advanced_mode(half_cut=False, no_chain=True)
+    )
+
+
+def _no_cut_block() -> bytes:
+    """Control block of a page that is not cut at all."""
+    return set_mode(auto_cut=False) + advanced_mode(half_cut=False, no_chain=True)
+
+
+def test_encode_strip_job_chunk_size_half_cuts_within_chunks():
+    """chunk_size half-cuts inside a chunk and full-cuts at every boundary."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line]] * 5,
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+        chunk_size=2,
+    )
+
+    # Pages 2, 4 close a chunk and page 5 is last: three full cuts, two half cuts.
+    assert job.count(_full_cut_block()) == 3
+    assert job.count(_half_cut_block()) == 2
+    assert job.count(CMD_PRINT_INFO) == 5
+    assert job.count(print_information(TapeWidth.MM_24, 1, last_page=False)) == 4
+    assert job.count(print_information(TapeWidth.MM_24, 1, last_page=True)) == 1
+    assert job.endswith(CMD_EJECT)
+
+
+def test_encode_strip_job_chunk_size_without_half_cut_cuts_only_at_boundaries():
+    """chunk_size without half_cut leaves interior pages uncut."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line]] * 5,
+        auto_cut=True,
+        half_cut=False,
+        no_chain=True,
+        chunk_size=2,
+    )
+
+    assert job.count(_full_cut_block()) == 3
+    assert job.count(_no_cut_block()) == 2
+    assert advanced_mode(half_cut=True, no_chain=True) not in job
+
+
+def test_encode_strip_job_chunk_size_one_cuts_every_page():
+    """chunk_size=1 makes every page a chunk boundary."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line]] * 3,
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+        chunk_size=1,
+    )
+
+    assert job.count(_full_cut_block()) == 3
+    assert _half_cut_block() not in job
+
+
+def test_encode_strip_job_chunk_size_leaves_default_behavior_untouched():
+    """chunk_size=None keeps the established half-cut and full-cut strip streams."""
+    line = _blank_raster_line()
+    pages = [[line]] * 3
+    kwargs = {"auto_cut": True, "no_chain": True}
+
+    assert encode_strip_job(
+        TapeWidth.MM_24, pages=pages, half_cut=True, chunk_size=None, **kwargs
+    ) == encode_strip_job(TapeWidth.MM_24, pages=pages, half_cut=True, **kwargs)
+    assert encode_strip_job(
+        TapeWidth.MM_24, pages=pages, half_cut=False, chunk_size=None, **kwargs
+    ) == encode_strip_job(TapeWidth.MM_24, pages=pages, half_cut=False, **kwargs)
+
+
+def test_encode_strip_job_chunk_size_single_page_is_full_cut():
+    """A one-page chunked strip is its own boundary, so it takes a full cut."""
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[_blank_raster_line()]],
+        auto_cut=True,
+        half_cut=True,
+        margin_dots=14,
+        chunk_size=4,
+    )
+
+    assert job == _load_golden("minimal_job_24mm.bin")
+
+
+def test_encode_strip_job_chunked_golden():
+    """encode_strip_job() produces stable bytes for a chunked half-cut strip."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line]] * 5,
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+        chunk_size=2,
+    )
+
+    golden = _load_golden("strip_job_24mm_5page_chunk2.bin")
+    assert job == golden
+
+
+def test_encode_strip_job_rejects_invalid_chunk_size():
+    """chunk_size must be a positive page count."""
+    pages = [[_blank_raster_line()]] * 2
+    for invalid in (0, -1):
+        with pytest.raises(ValueError, match="chunk_size"):
+            encode_strip_job(TapeWidth.MM_24, pages=pages, chunk_size=invalid)
+
+
+def test_encode_strip_job_chunk_size_requires_auto_cut():
+    """Chunk boundaries are auto-cuts, so chunk_size needs auto_cut enabled."""
+    pages = [[_blank_raster_line()]] * 2
+    with pytest.raises(ValueError, match="chunk_size requires auto_cut"):
+        encode_strip_job(TapeWidth.MM_24, pages=pages, auto_cut=False, chunk_size=2)
+
+
+def test_encode_strip_job_rejects_chunk_size_with_cut_each_n():
+    """chunk_size and cut_each_n both drive full cuts; refuse the ambiguity."""
+    pages = [[_blank_raster_line()]] * 2
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        encode_strip_job(TapeWidth.MM_24, pages=pages, chunk_size=2, cut_each_n=2)
+
+
 def test_set_margin():
     """set_margin() encodes dot count as little-endian 16-bit."""
     assert set_margin(14) == CMD_MARGIN + bytes([0x0E, 0x00])

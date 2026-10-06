@@ -17,7 +17,8 @@ Python code.
   to the narrow white band (~9.8 mm) and centred there, keeping content off the clear
   laminate flap (text, PNG, and strips)
 - **Multi-label strips** — chain multiple images into one strip with auto-cut or
-  half-cut (laminated tape only)
+  half-cut (laminated tape only), optionally grouped into chunks that are
+  half-cut within and full-cut between
 - **CSV batch printing** — print a list of images from a CSV file as one strip
 - **Tape reference** — list supported TZe widths and printable pixel dimensions
 
@@ -126,6 +127,9 @@ brother-ptouch-driver print --csv labels.csv --tape 12mm
 
 # Half-cut peelable labels (laminated tape only)
 brother-ptouch-driver print qr.png --tape 12mm --half-cut
+
+# Chunked strip: 20 labels, half-cut within groups of 5, full cut between groups
+brother-ptouch-driver print --csv labels.csv --tape 12mm --half-cut --cut-every 5
 
 # Print a text label (tape auto-detected from printer status)
 brother-ptouch-label "Hello, world!"

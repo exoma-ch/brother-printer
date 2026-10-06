@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.3.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.3.0) - 2026-10-06
+
+### Added
+
+- **Chunked strip printing: half-cuts within a group, a full cut between groups** ([#56](https://github.com/exoma-ch/brother-printer/issues/56))
+  - `encode_strip_job()` decided the cut once for the whole strip (`effective_auto_cut = auto_cut and not half_cut`), so a strip was either half-cut between every label with no full cut anywhere, or full-cut only. Batch-printing many peelable labels therefore had no way to keep labels grouped for handling while separating the groups physically
+  - New `chunk_size` on `encode_strip_job()` resolves the cut per page: a page that closes a chunk — every `chunk_size`-th page, and the last one — takes a full cut (`ESC i M 40`, `ESC i A 01`, `ESC i K 08`), and the pages inside a chunk keep the half-cut block the strip encoder already emitted. `print_strip(chunk_size=N)` and `brother-ptouch-driver print --cut-every N` expose it; `--cut-every` implies `--strip`, so `--copies 10 --cut-every 5` chunks copies of a single image
+  - **The PT-E920BT applies the cut settings of a job's first page to every page of that job.** Hardware-verified on 6 mm laminated tape: a five-page job whose pages 2, 4 and 5 carried full-cut blocks came out as one continuous strip with four half-cuts, because page 1 was half-cut. The same encoding with uniform full-cut blocks on every page (`--cut-every 1`) cut all five labels apart, so per-page cutting itself works — only switching the *kind* mid-job does not. A job's final eject full-cuts, which the issue's rejected "separate job per chunk" alternative had assumed it would not
+  - `print_strip()` therefore sends a half-cut chunked strip as **one job per chunk**: each job half-cuts between its own pages and full-cuts as it ends, which the printer honours. Cost of the split is the head-to-cutter feed at every chunk boundary — inherent to a full cut, not overhead this adds. Full-cut-only chunking (`--cut-every N` without `--half-cut`) stays a single job and lets the printer's own cut-each-N counter group the pages, finally making the long-dead `cut_each_n` parameter reachable
+  - `chunk_size` needs `auto_cut` (a chunk boundary *is* an auto-cut) and refuses to combine with `cut_each_n`, which drives full cuts by its own rule. Backward compatible: `chunk_size=None` reproduces both established strip streams byte for byte, pinned by an equality test against the existing encoding and by the unchanged half-cut goldens. A new golden snapshots the five-page, chunk-of-two stream
+  - New opt-in hardware case **H3** (`just test-print`, laminated tape) prints a five-label strip in chunks of two; TESTING.md records the expected three pieces of tape and what each wrong outcome would mean
+
+- **`packaging/scripts/setup-usb.sh` supports NixOS hosts, and gained a one-off grant** ([#63](https://github.com/exoma-ch/brother-printer/issues/63))
+  - On NixOS every step the script performed was inapplicable: libusb dispatch found no `apt`/`dnf`/`pacman`/`zypper` and installed nothing, the udev rule copy targeted `/etc/udev/rules.d` — a read-only symlink into the Nix store — and `plugdev` neither exists nor can be created from outside the system configuration. A NixOS user following the published install docs got a warning and no working path, while the device enumerated and `open()` failed with permission denied
+  - The script now detects NixOS (`/etc/NIXOS`, or `ID=nixos` in `/etc/os-release`), skips the package-manager step with a pointer to the dev shell or the user's own profile, locates the connected `04f9:224b` device through sysfs to derive its `/dev/bus/usb` node, offers to `chmod` that node after confirming, and prints the rule to declare in the system configuration rather than pretending to install it
+  - The printed rule grants through `GROUP="lp"` + `MODE` and names the matching `users.users.<you>.extraGroups`, not `TAG+="uaccess"`: on NixOS the tag is applied but nothing consumes it, because the `RUN{builtin}+="uaccess"` that installs the ACL ships in systemd's `71-seat.rules` / `73-seat-late.rules`, neither of which NixOS assembles into `/etc/udev/rules.d` — so the rule goes live, `getfacl` shows no ACL, and access is still denied
+  - New `--one-off` flag grants access on the currently connected printer and does nothing else — no libusb, no udev rule, no group. It needs no rebuild and is lost on replug, which is all a single hardware check wants, and it works on any distribution, not just NixOS; `--yes` skips the confirmation for unattended use. Privileged prompts decline when stdin is not a terminal instead of blocking on a prompt nobody can answer
+  - [docs/install/linux-usb.md](docs/install/linux-usb.md) gains a NixOS section, and its development-shell section no longer recommends the inert `uaccess` rule. `packaging/udev/99-brother-ptouch.rules` records that `plugdev` membership is the load-bearing grant and that the `uaccess` tag adds something only where systemd's seat rules are part of the assembled rule set
+  - The conventional-distribution path is unchanged and now has regression tests. Host paths come from overridable `SETUP_USB_*` variables and `main` is guarded so the script's functions can be sourced, which is what lets both paths run end to end against a fake host tree on any Linux host — including a CI runner, which is not NixOS
+
+### Changed
+
+- **Development environment upgraded to vigOS devkit 1.18.0 and moved to the Nix dev shell** ([#60](https://github.com/exoma-ch/brother-printer/issues/60))
+  - The repo was scaffolded from devkit 0.3.4 and never upgraded, so it had drifted ~26 releases behind, across the Debian-to-Nix re-platform of the shared devcontainer image
+  - `.devcontainer/` is gone; the toolchain now comes from `flake.nix` + `.envrc` (`direnv allow`, or `nix develop`). `libusb-1.0` is declared as a project package and placed on `LD_LIBRARY_PATH`, because pyusb resolves its backend through `ctypes.util.find_library` at import time. Hardware verification therefore runs against the host USB tree directly, with no device passthrough, no rootless-Podman uid remapping and no container-specific udev rule
+  - This was the forcing reason for the move: the 1.18.0 image is Nix-built with no `apt`, `libusb` is not on the shared toolchain list, and container mode scaffolds no project flake in which to declare it
+  - Agent skills moved from `.cursor/` to `.claude/`; the hook suite now resolves `ruff`, `typos`, `pymarkdown`, `shellcheck`, `actionlint` and `nixfmt` from the dev shell instead of pre-built wheels, and gains commit-message, branch-name and agent-identity validation
+  - The release-train and `gh` helper recipes are vendored into `justfile.project`: devkit defines them only under `.devcontainer/`, which this mode does not ship. The release workflows themselves are unaffected (reported upstream as vig-os/devkit#1823)
+  - The USB development-shell documentation covers NixOS hosts, where `packaging/scripts/setup-usb.sh` does not apply: it installs libusb through a distribution package manager and writes to `/etc/udev/rules.d`, which is a read-only Nix store symlink. Documents the declarative `services.udev.extraRules` equivalent, plus a one-off `chmod` for a single hardware check. The rule it first suggested used `TAG+="uaccess"`, which is inert on NixOS; corrected in [#63](https://github.com/exoma-ch/brother-printer/issues/63), which also teaches the script the NixOS path
+  - Golden-image comparison is no longer byte-for-byte. Byte-exactness against a font rasterizer was only ever portable because development and CI shared one container image; the dev shell and a hosted CI runner differ by design (devkit forwards `UV_PYTHON` only on a NixOS runner), which shifts glyph advances by 1-3px and ~8px at the 48px default cap. The goldens now assert exact height (set by tape width and band confinement), width within a proportional tolerance, ink band count, and scale-normalized ink geometry — so alignment, rotation, line count, tape width and the font-size cap are all still guarded, with thresholds calibrated against the committed fixtures and pinned by tests of the comparator itself
+  - Contributor-facing only — the published driver and its CLIs are unchanged. Linux USB setup for end users is unchanged; see [docs/install/linux-usb.md](docs/install/linux-usb.md) for the revised development-shell section
+
+### Fixed
+
+- **Renovate configuration pointed at an unsubstituted scaffold placeholder** ([#59](https://github.com/exoma-ch/brother-printer/issues/59))
+  - `renovate.json` extended `github>OWNER/REPO//.github/renovate-default`, the literal template placeholder, so Renovate could not resolve the shared preset (`Cannot find preset's package`) and stopped opening dependency PRs for this repository as a precaution
+  - Point it at `github>exoma-ch/brother-printer//.github/renovate-default`. The preset itself was always present at `.github/renovate-default.json`; only the reference to it was wrong
+
 ## [0.2.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.2.0) - 2026-06-17
 
 ### Added
