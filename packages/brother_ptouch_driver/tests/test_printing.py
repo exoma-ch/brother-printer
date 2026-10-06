@@ -136,6 +136,7 @@ def test_print_strip_writes_one_job_for_multiple_images(
         [[b"\x01" * 70] * 2, [b"\x02" * 70] * 3],
         auto_cut=True,
         half_cut=True,
+        chunk_size=None,
     )
     assert transport.write.call_count == 2  # status + strip job
     assert written == 100
@@ -174,7 +175,57 @@ def test_print_strip_expands_copies_into_pages(
         [raster, raster, raster],
         auto_cut=True,
         half_cut=False,
+        chunk_size=None,
     )
+
+
+@patch("brother_ptouch_driver.printing.encode_strip_job")
+@patch("brother_ptouch_driver.printing.image_to_raster")
+@patch("brother_ptouch_driver.printing.decode_status")
+@patch("brother_ptouch_driver.printing.status_request", return_value=b"\x1biS")
+@patch("brother_ptouch_driver.printing.UsbTransport")
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_forwards_chunk_size(
+    mock_discover,
+    mock_transport_cls,
+    mock_status_request,
+    mock_decode_status,
+    mock_image_to_raster,
+    mock_encode_strip_job,
+):
+    """print_strip() forwards chunk_size to encode_strip_job()."""
+    from brother_ptouch_driver import print_strip
+
+    mock_discover.return_value = [_sample_printer()]
+    transport = _mock_transport()
+    mock_transport_cls.return_value = transport
+    mock_decode_status.return_value = _ready_status(tape=TapeWidth.MM_24)
+    raster = [b"\x00" * 70] * 2
+    mock_image_to_raster.return_value = raster
+    mock_encode_strip_job.return_value = b"strip-bytes"
+
+    image = Image.new("L", (80, 80), 255)
+    print_strip([image], TapeWidth.MM_24, copies=4, half_cut=True, chunk_size=2)
+
+    mock_encode_strip_job.assert_called_once_with(
+        TapeWidth.MM_24,
+        [raster] * 4,
+        auto_cut=True,
+        half_cut=True,
+        chunk_size=2,
+    )
+
+
+@patch("brother_ptouch_driver.printing.discover")
+def test_print_strip_rejects_invalid_chunk_size(mock_discover):
+    """print_strip() rejects chunk_size < 1 before touching the USB bus."""
+    from brother_ptouch_driver import print_strip
+
+    image = Image.new("L", (80, 80), 255)
+    with pytest.raises(ValueError, match="chunk_size"):
+        print_strip([image], TapeWidth.MM_24, chunk_size=0)
+
+    mock_discover.assert_not_called()
 
 
 @patch("brother_ptouch_driver.printing.encode_job")
