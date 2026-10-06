@@ -6,7 +6,7 @@ Run with::
 
 Consumes tape. Requires USB passthrough, udev permissions, a loaded TZe tape
 matching committed fixtures, and ``BROTHER_PTOUCH_DRIVER_HARDWARE=1``. See TESTING.md
-for the print matrix (H1–H2).
+for the print matrix (H1–H3).
 """
 
 from __future__ import annotations
@@ -29,6 +29,10 @@ from tests.hardware.conftest import (  # noqa: F401
 
 # Wrong-height image for ImageScalingError guard (height != any tape print area).
 _WRONG_HEIGHT_SIZE = 50
+
+# H3 chunked strip: five labels in chunks of two, so the last chunk is short.
+_CHUNKED_STRIP_PAGES = 5
+_CHUNKED_STRIP_CHUNK = 2
 
 
 def test_print_chained_strip(
@@ -62,6 +66,33 @@ def test_print_half_cut_strip(
 
     _ensure_status_readable(printer)
     written = print_strip(images, laminated_tape, half_cut=True)
+
+    assert written > 0
+    _wait_for_printer_idle(printer)
+
+
+def test_print_chunked_strip(
+    label_fixture_path: Path,
+    laminated_tape: TapeWidth,
+    printer: PrinterInfo,
+) -> None:
+    """H3: print_strip() chunks five labels in twos (laminated tape only).
+
+    Expected output: two 2-label strips joined internally by half-cuts and
+    separated by full cuts, then a single fully cut label.
+    """
+    _wait_for_printer_idle(printer)
+
+    with Image.open(label_fixture_path) as image:
+        images = [image.copy() for _ in range(_CHUNKED_STRIP_PAGES)]
+
+    _ensure_status_readable(printer)
+    written = print_strip(
+        images,
+        laminated_tape,
+        half_cut=True,
+        chunk_size=_CHUNKED_STRIP_CHUNK,
+    )
 
     assert written > 0
     _wait_for_printer_idle(printer)

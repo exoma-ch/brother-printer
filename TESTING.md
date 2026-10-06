@@ -106,9 +106,16 @@ covered by software golden/imaging tests without tape.
 | --- | --- | --- | --- |
 | **H1** | `test_print_chained_strip` | 1 auto-cut strip (2 pages, **one cut** at end) | `print_strip`, chained multi-page feed (`print_page`/FF between pages, `eject` at end), auto-cut cutter |
 | **H2** | `test_print_half_cut_strip` | 1 half-cut strip (2 pages) | `print_strip`, `half_cut=True`, chained multi-page, auto-cut forced off; **laminated tape only** |
+| **H3** | `test_print_chunked_strip` | 1 chunked strip (5 pages, chunks of 2) | `print_strip`, `chunk_size=2` with `half_cut=True`: half-cuts inside a chunk, full cut at each boundary; **laminated tape only** |
 
-**Rough total per run:** one short 2-page auto-cut strip (H1) plus one short half-cut strip
-(H2) when laminated tape is loaded; otherwise H1 only.
+**Rough total per run:** one short 2-page auto-cut strip (H1) plus, when laminated tape is
+loaded, one short half-cut strip (H2) and one 5-label chunked strip (H3, three full cuts);
+otherwise H1 only.
+
+H3 is the eye check for chunked printing: two 2-label strips, each held together by a
+half-cut and separated from the next by a full cut, then a single fully cut label. One
+continuous strip with four half-cuts, or five fully separated labels, means the printer
+ignored the per-page cut switch — see the fallback noted in issue #56.
 
 **Head-to-cutter clearance:** the ~24 mm blank tape before the first printed segment
 (and the feed before each cut) is inherent to the PT-E920BT mechanics, not test-layout waste.
@@ -129,7 +136,7 @@ Pin counts per width: [docs/vendor/tze-tape-widths.md](docs/vendor/tze-tape-widt
   with a message to run `just gen-fixtures-driver`.
 - `print_image` / `print_strip` call `_validate_status`; a width mismatch raises
   `TapeMismatchError`.
-- Half-cut (H2) requires **laminated** TZe/HGe; non-laminated tape skips H2.
+- Half-cut (H2) and chunked half-cut (H3) require **laminated** TZe/HGe; non-laminated tape skips both.
 - To cover another width, swap tape and re-run `just test-hardware`.
 
 ## Coverage gaps (hardware)
