@@ -158,6 +158,15 @@ def status_cmd(printer: str | None) -> None:
     default=False,
     help="Chain copies or multiple images into one label strip.",
 )
+@click.option(
+    "--cut-every",
+    type=click.IntRange(min=1),
+    default=None,
+    help=(
+        "Full-cut the strip every N labels; with --half-cut the labels inside "
+        "each group stay joined by half-cuts. Implies --strip."
+    ),
+)
 @click.option("--copies", type=click.IntRange(min=1), default=1, show_default=True)
 @click.option(
     "--threshold",
@@ -185,6 +194,7 @@ def print_cmd(
     auto_cut: bool,
     half_cut: bool,
     strip: bool,
+    cut_every: int | None,
     copies: int,
     threshold: int,
     scale: bool,
@@ -213,13 +223,15 @@ def print_cmd(
         "half_cut": half_cut,
         "scale": scale,
     }
+    # chunk_size is a strip-only concern; print_image() does not take it.
+    strip_kwargs = {**print_kwargs, "chunk_size": cut_every}
 
     try:
         if csv is not None:
-            written = _print_csv_strip(csv, tape_width, print_kwargs)
-        elif len(paths) > 1 or strip:
+            written = _print_csv_strip(csv, tape_width, strip_kwargs)
+        elif len(paths) > 1 or strip or cut_every is not None:
             written = _print_paths_strip(
-                paths, tape_width, copies=copies, **print_kwargs
+                paths, tape_width, copies=copies, **strip_kwargs
             )
         else:
             with Image.open(paths[0]) as image:

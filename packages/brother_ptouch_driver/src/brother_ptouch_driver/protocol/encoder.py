@@ -148,6 +148,51 @@ def eject() -> bytes:
     return CMD_EJECT
 
 
+def _page_cut_settings(
+    index: int,
+    page_count: int,
+    *,
+    auto_cut: bool,
+    half_cut: bool,
+    chunk_size: int | None,
+    cut_each_n: int | None,
+) -> tuple[bool, bool, int | None]:
+    """Resolve ``(auto_cut, half_cut, cut_each_n)`` for one page of a strip.
+
+    Without ``chunk_size`` the whole strip shares one setting. With it, a page
+    that closes a chunk — every ``chunk_size``-th page, and the last one — takes
+    a full cut, and the pages inside a chunk take ``half_cut`` instead.
+    """
+    if chunk_size is None:
+        effective_auto_cut = auto_cut and not half_cut
+        resolved_cut_each = page_count if cut_each_n is None else cut_each_n
+        return (
+            effective_auto_cut,
+            half_cut,
+            resolved_cut_each if effective_auto_cut else None,
+        )
+
+    closes_chunk = index + 1 == page_count or (index + 1) % chunk_size == 0
+    if closes_chunk:
+        return True, False, 1
+    return False, half_cut, None
+
+
+def _page_control_block(
+    *,
+    auto_cut: bool,
+    half_cut: bool,
+    cut_each_n: int | None,
+    no_chain: bool,
+) -> bytes:
+    """Mode, cut-each and advanced-mode commands that open one strip page."""
+    parts = [set_mode(auto_cut=auto_cut)]
+    if auto_cut and cut_each_n is not None:
+        parts.append(cut_each(cut_each_n))
+    parts.append(advanced_mode(half_cut=half_cut, no_chain=no_chain))
+    return b"".join(parts)
+
+
 def encode_strip_job(
     width: TapeWidth,
     pages: list[list[bytes]],
@@ -157,6 +202,7 @@ def encode_strip_job(
     half_cut: bool = False,
     no_chain: bool = True,
     cut_each_n: int | None = None,
+    chunk_size: int | None = None,
     compression: int = 0,
 ) -> bytes:
     """Assemble a multi-page print job byte stream.
@@ -164,10 +210,26 @@ def encode_strip_job(
     Half-cut strips disable auto-cut and emit a full control block per page.
     Callers must ensure laminated tape when ``half_cut`` is True; see
     ``print_strip()`` validation in ``brother_ptouch_driver.printing``.
+
+    ``chunk_size`` groups the strip: pages within a chunk are separated by
+    half-cuts when ``half_cut`` is True (left uncut otherwise), and every
+    chunk boundary — including the end of the strip — takes a full cut. It
+    needs ``auto_cut`` and cannot be combined with ``cut_each_n``.
     """
     if not pages:
         msg = "pages must contain at least one raster page"
         raise ValueError(msg)
+
+    if chunk_size is not None:
+        if cut_each_n is not None:
+            msg = "chunk_size and cut_each_n are mutually exclusive"
+            raise ValueError(msg)
+        if chunk_size < 1:
+            msg = "chunk_size must be at least 1"
+            raise ValueError(msg)
+        if not auto_cut:
+            msg = "chunk_size requires auto_cut"
+            raise ValueError(msg)
 
     if len(pages) == 1:
         return _encode_single_page_job(
@@ -175,28 +237,37 @@ def encode_strip_job(
             pages[0],
             auto_cut=auto_cut,
             margin_dots=margin_dots,
-            half_cut=half_cut,
+            # A one-page strip is its own chunk boundary, so it is full-cut.
+            half_cut=half_cut and chunk_size is None,
             no_chain=no_chain,
             compression=compression,
         )
 
     page_count = len(pages)
-    effective_auto_cut = auto_cut and not half_cut
     parts: list[bytes] = []
 
     for index, raster_lines in enumerate(pages):
         is_last = index == page_count - 1
+        page_auto_cut, page_half_cut, page_cut_each = _page_cut_settings(
+            index,
+            page_count,
+            auto_cut=auto_cut,
+            half_cut=half_cut,
+            chunk_size=chunk_size,
+            cut_each_n=cut_each_n,
+        )
         if index == 0:
             parts.append(initialize())
         parts.append(switch_raster_mode())
         parts.append(print_information(width, len(raster_lines), last_page=is_last))
-        parts.append(set_mode(auto_cut=effective_auto_cut))
-        if effective_auto_cut:
-            resolved_cut_each = page_count if cut_each_n is None else cut_each_n
-            parts.append(cut_each(resolved_cut_each))
         parts.extend(
             [
-                advanced_mode(half_cut=half_cut, no_chain=no_chain),
+                _page_control_block(
+                    auto_cut=page_auto_cut,
+                    half_cut=page_half_cut,
+                    cut_each_n=page_cut_each,
+                    no_chain=no_chain,
+                ),
                 set_margin(margin_dots),
                 select_compression(compression),
             ]

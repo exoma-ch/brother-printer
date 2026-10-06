@@ -170,6 +170,60 @@ def print_png(
         )
 
 
+def _strip_jobs(
+    tape_width: TapeWidth,
+    pages: list[list[bytes]],
+    *,
+    auto_cut: bool,
+    half_cut: bool,
+    chunk_size: int | None,
+) -> list[bytes]:
+    """Encode a strip as one job per piece of tape it should come out as.
+
+    The PT-E920BT applies the cut settings of a job's *first* page to every
+    page of that job: a full-cut control block on a later page comes out as a
+    half cut (verified on hardware for #56). Half-cuts within a chunk and full
+    cuts between chunks therefore cannot share one job — each chunk is sent as
+    its own job, which half-cuts between its pages and full-cuts as it ends.
+
+    Full-cut-only chunking needs no split: the settings stay uniform, so the
+    printer's own cut-each-N counter groups the pages in a single job.
+    """
+    if chunk_size is None:
+        return [
+            encode_strip_job(
+                tape_width,
+                pages,
+                auto_cut=auto_cut,
+                half_cut=half_cut,
+            )
+        ]
+
+    if not half_cut:
+        return [
+            encode_strip_job(
+                tape_width,
+                pages,
+                auto_cut=auto_cut,
+                half_cut=False,
+                cut_each_n=chunk_size,
+            )
+        ]
+
+    chunks = [pages[i : i + chunk_size] for i in range(0, len(pages), chunk_size)]
+    return [
+        encode_strip_job(
+            tape_width,
+            chunk,
+            auto_cut=auto_cut,
+            half_cut=True,
+            # Only the chunk's last page closes a chunk, so only it is full-cut.
+            chunk_size=len(chunk),
+        )
+        for chunk in chunks
+    ]
+
+
 def print_strip(
     images: list[Image.Image],
     tape_width: TapeWidth,
@@ -180,13 +234,23 @@ def print_strip(
     auto_cut: bool = True,
     half_cut: bool = False,
     scale: bool = False,
+    chunk_size: int | None = None,
 ) -> int:
     """Print a chained strip of labels in one multi-page job.
 
     Half-cut requires laminated tape; see docs/vendor/tze-tape-widths.md.
+
+    ``chunk_size`` groups the strip into runs of that many labels, each run
+    ending in a full cut; with ``half_cut`` the labels inside a run stay joined
+    by half-cuts. Such a strip is sent as one job per run — see ``_strip_jobs``
+    — so the printer feeds to the cutter at every chunk boundary.
     """
     if not images:
         msg = "images must contain at least one label"
+        raise ValueError(msg)
+
+    if chunk_size is not None and chunk_size < 1:
+        msg = "chunk_size must be at least 1"
         raise ValueError(msg)
 
     selected = select_printer(discover(), printer)
@@ -208,10 +272,14 @@ def print_strip(
             for _ in range(copies):
                 pages.append(raster_lines)
 
-        job = encode_strip_job(
+        jobs = _strip_jobs(
             tape_width,
             pages,
             auto_cut=auto_cut,
             half_cut=half_cut,
+            chunk_size=chunk_size,
         )
-        return transport.write(job)
+        written = 0
+        for job in jobs:
+            written += transport.write(job)
+        return written

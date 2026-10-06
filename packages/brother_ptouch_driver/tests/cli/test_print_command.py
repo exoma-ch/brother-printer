@@ -105,6 +105,117 @@ def test_print_command_csv_uses_strip(mock_print_strip):
     assert kwargs["half_cut"] is True
 
 
+@patch("brother_ptouch_driver.cli.main.print_strip")
+def test_print_command_passes_cut_every_as_chunk_size(mock_print_strip):
+    """--cut-every N reaches print_strip() as chunk_size."""
+    mock_print_strip.return_value = 4096
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        _write_test_image(Path("b.png"))
+        result = runner.invoke(
+            main,
+            [
+                "print",
+                "a.png",
+                "b.png",
+                "--tape",
+                "24mm",
+                "--half-cut",
+                "--cut-every",
+                "2",
+            ],
+        )
+
+    assert result.exit_code == 0
+    _, kwargs = mock_print_strip.call_args
+    assert kwargs["chunk_size"] == 2
+    assert kwargs["half_cut"] is True
+
+
+@patch("brother_ptouch_driver.cli.main.print_strip")
+def test_print_command_strip_defaults_to_no_chunking(mock_print_strip):
+    """Without --cut-every, strips are encoded with chunk_size=None."""
+    mock_print_strip.return_value = 4096
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        _write_test_image(Path("b.png"))
+        result = runner.invoke(main, ["print", "a.png", "b.png", "--tape", "24mm"])
+
+    assert result.exit_code == 0
+    _, kwargs = mock_print_strip.call_args
+    assert kwargs["chunk_size"] is None
+
+
+@patch("brother_ptouch_driver.cli.main.print_image")
+@patch("brother_ptouch_driver.cli.main.print_strip")
+def test_print_command_cut_every_implies_strip(mock_print_strip, mock_print_image):
+    """--cut-every chunks copies of a single image, so it routes to print_strip()."""
+    mock_print_strip.return_value = 9000
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("label.png"))
+        result = runner.invoke(
+            main,
+            [
+                "print",
+                "label.png",
+                "--tape",
+                "24mm",
+                "--half-cut",
+                "--copies",
+                "10",
+                "--cut-every",
+                "5",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_print_image.assert_not_called()
+    mock_print_strip.assert_called_once()
+    _, kwargs = mock_print_strip.call_args
+    assert kwargs["copies"] == 10
+    assert kwargs["chunk_size"] == 5
+
+
+@patch("brother_ptouch_driver.cli.main.print_strip")
+def test_print_command_csv_passes_cut_every(mock_print_strip):
+    """--cut-every applies to CSV strips too."""
+    mock_print_strip.return_value = 5000
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        Path("jobs.csv").write_text("image,copies\na.png,4\n", encoding="utf-8")
+        result = runner.invoke(
+            main,
+            ["print", "--tape", "24mm", "--csv", "jobs.csv", "--cut-every", "2"],
+        )
+
+    assert result.exit_code == 0
+    _, kwargs = mock_print_strip.call_args
+    assert kwargs["chunk_size"] == 2
+
+
+@patch("brother_ptouch_driver.cli.main.print_strip")
+def test_print_command_rejects_zero_cut_every(mock_print_strip):
+    """--cut-every must be at least 1."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        _write_test_image(Path("a.png"))
+        result = runner.invoke(
+            main, ["print", "a.png", "--tape", "24mm", "--cut-every", "0"]
+        )
+
+    assert result.exit_code == 2
+    mock_print_strip.assert_not_called()
+
+
 @patch("brother_ptouch_driver.cli.main.print_image")
 def test_print_command_rejects_paths_and_csv_together(mock_print_image):
     """print exits 2 when both paths and --csv are provided."""
