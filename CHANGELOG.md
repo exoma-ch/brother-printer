@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.3.0] - TBD
+
+### Added
+
 - **Chunked strip printing: half-cuts within a group, a full cut between groups** ([#56](https://github.com/exoma-ch/brother-printer/issues/56))
   - `encode_strip_job()` decided the cut once for the whole strip (`effective_auto_cut = auto_cut and not half_cut`), so a strip was either half-cut between every label with no full cut anywhere, or full-cut only. Batch-printing many peelable labels therefore had no way to keep labels grouped for handling while separating the groups physically
   - New `chunk_size` on `encode_strip_job()` resolves the cut per page: a page that closes a chunk — every `chunk_size`-th page, and the last one — takes a full cut (`ESC i M 40`, `ESC i A 01`, `ESC i K 08`), and the pages inside a chunk keep the half-cut block the strip encoder already emitted. `print_strip(chunk_size=N)` and `brother-ptouch-driver print --cut-every N` expose it; `--cut-every` implies `--strip`, so `--copies 10 --cut-every 5` chunks copies of a single image
