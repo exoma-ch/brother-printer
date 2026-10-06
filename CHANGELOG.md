@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## [0.3.0] - TBD
+## [0.3.0](https://github.com/exoma-ch/brother-printer/releases/tag/0.3.0) - 2026-10-06
 
 ### Added
 
