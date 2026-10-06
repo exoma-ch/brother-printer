@@ -180,13 +180,22 @@ def print_strip(
     auto_cut: bool = True,
     half_cut: bool = False,
     scale: bool = False,
+    chunk_size: int | None = None,
 ) -> int:
     """Print a chained strip of labels in one multi-page job.
 
     Half-cut requires laminated tape; see docs/vendor/tze-tape-widths.md.
+
+    ``chunk_size`` groups the strip into runs of that many labels, each run
+    ending in a full cut; with ``half_cut`` the labels inside a run stay joined
+    by half-cuts.
     """
     if not images:
         msg = "images must contain at least one label"
+        raise ValueError(msg)
+
+    if chunk_size is not None and chunk_size < 1:
+        msg = "chunk_size must be at least 1"
         raise ValueError(msg)
 
     selected = select_printer(discover(), printer)
@@ -213,5 +222,6 @@ def print_strip(
             pages,
             auto_cut=auto_cut,
             half_cut=half_cut,
+            chunk_size=chunk_size,
         )
         return transport.write(job)
