@@ -296,6 +296,22 @@ def test_encode_strip_job_chunk_size_single_page_is_full_cut():
     assert job == _load_golden("minimal_job_24mm.bin")
 
 
+def test_encode_strip_job_chunked_golden():
+    """encode_strip_job() produces stable bytes for a chunked half-cut strip."""
+    line = _blank_raster_line()
+    job = encode_strip_job(
+        TapeWidth.MM_24,
+        pages=[[line]] * 5,
+        auto_cut=True,
+        half_cut=True,
+        no_chain=True,
+        chunk_size=2,
+    )
+
+    golden = _load_golden("strip_job_24mm_5page_chunk2.bin")
+    assert job == golden
+
+
 def test_encode_strip_job_rejects_invalid_chunk_size():
     """chunk_size must be a positive page count."""
     pages = [[_blank_raster_line()]] * 2
