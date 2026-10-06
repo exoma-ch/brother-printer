@@ -105,115 +105,134 @@ Expected output (one line per printer):
 04f9:xxxx#<serial>  PT-E920BT   <bus>:<address>
 ```
 
-## Verifying inside the devcontainer (rootless Podman)
+## Verifying from the development shell
 
-The project devcontainer bind-mounts the host USB device tree so pyusb can open
-device nodes (enumeration via `/sys` alone is not enough for string descriptors
-or I/O). Configuration lives in
-[.devcontainer/docker-compose.project.yaml](../../.devcontainer/docker-compose.project.yaml):
+Hardware verification runs on the host, in the project's Nix dev shell. The
+repository moved from a devcontainer to `direnv` mode precisely because of this
+device: the shared container image is Nix-built with no `apt`, and `libusb` is
+not on the toolchain's package list, so there was no supported way to put the
+pyusb backend inside it. On the host there is no device passthrough, no
+rootless-Podman uid remapping and no container-specific udev rule to maintain —
+the printer is simply the host's printer.
+
+Enter the shell (`direnv allow` does this automatically on `cd`):
+
+```bash
+nix develop        # or: direnv allow
+```
+
+`flake.nix` adds `pkgs.libusb1` and puts it on `LD_LIBRARY_PATH`, because pyusb
+resolves the backend through `ctypes.util.find_library` at import time — being
+in the closure is not enough. Confirm both:
+
+```bash
+# libusb discoverable by ctypes (what pyusb actually does)
+python3 -c "import ctypes.util; print(ctypes.util.find_library('usb-1.0'))"
+
+# libusb backend loaded
+uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
+```
+
+### Host setup
+
+The dev shell supplies `libusb`, so the only thing still needed from the host is
+permission to open the device node. Without it, enumeration succeeds and
+`open()` fails with permission denied.
+
+**On a conventional distribution**, this is the same setup an end user performs
+— install the rule and join `plugdev`:
+
+```bash
+./packaging/scripts/setup-usb.sh        # or: just setup-usb
+```
+
+See [Quick setup (script)](#quick-setup-script) for what it does and
+[Prerequisites](#prerequisites) for the manual equivalent.
+
+**On NixOS, that script does not apply.** It installs `libusb` through
+`apt`/`dnf`/`pacman`/`zypper`, which NixOS has none of, and it writes to
+`/etc/udev/rules.d`, which is a read-only symlink into the Nix store. There is
+also no `plugdev` group unless the system configuration creates one. Declare the
+rule in your system configuration instead and rebuild — either inline:
+
+```nix
+services.udev.extraRules = ''
+  SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", ATTR{idProduct}=="224b", TAG+="uaccess"
+'';
+```
+
+or by adding a package carrying
+[99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules) to
+`services.udev.packages`. `TAG+="uaccess"` grants the locally logged-in user
+access through systemd-logind, which avoids needing a `plugdev` group at all.
+
+**For a single verification run**, with no system change, chmod the node after
+plugging the printer in:
+
+```bash
+lsusb -d 04f9:                          # PT-E920BT is 04f9:224b; note Bus/Device
+sudo chmod 666 /dev/bus/usb/<bus>/<device>
+```
+
+This is lost on replug, which is fine for a one-off hardware check and avoids a
+rebuild.
+
+Afterwards, confirm the node is openable:
+
+```bash
+ls -l /dev/bus/usb/<bus>/<device>       # expect crw-rw-rw- or crw-rw-r--+
+```
+
+### Verify
+
+With the PT-E920BT connected and powered on:
+
+```bash
+just discover            # library-level device discovery
+just printer-status      # live status: loaded tape, errors
+just test-connect        # non-destructive checks, consumes no tape
+just test-hardware       # full opt-in hardware suite (consumes tape)
+```
+
+## Running the driver inside a container
+
+This section is for *using* the driver in a container, not for developing this
+repository — the project has no devcontainer. The notes are kept because
+rootless Podman needs more than the standard rule.
+
+Bind-mount the host USB device tree; enumeration via `/sys` alone is not enough
+for string descriptors or I/O:
 
 ```yaml
 volumes:
   - /dev/bus/usb:/dev/bus/usb
 ```
 
-Rootless Podman does not support `device_cgroup_rules` (container create fails) or
-Docker's `group_add: keep-groups` (Podman looks up a group named `keep-groups`).
-USB access relies on the bind mount and the devcontainer udev rule (`MODE="0666"`).
-Rootful Docker users who hit a device-cgroup deny on bind-mounted nodes may add
-`device_cgroup_rules: ["c 189:* rwm"]` to a personal
-[`.devcontainer/docker-compose.local.yaml`](../../.devcontainer/docker-compose.local.yaml)
-(gitignored).
+Rootless Podman supports neither `device_cgroup_rules` (container create fails)
+nor Docker's `group_add: keep-groups` (Podman looks up a group literally named
+`keep-groups`). It also remaps bind-mounted nodes to `nobody:nogroup`, so mode
+`0664` leaves container processes with read-only `other::r--` access — which
+makes enumeration succeed while `open()` fails with permission denied.
 
-The libusb backend is installed on container create via
-[.devcontainer/scripts/post-create.sh](../../.devcontainer/scripts/post-create.sh).
-
-### Host setup (run on the Linux host, not inside the container)
-
-1. Install the **devcontainer udev rule** (rootless Podman remaps USB nodes to
-   `nobody:nogroup` inside the container; mode `0664` leaves container processes
-   with read-only access). From the repo root:
-
-   ```bash
-   sudo cp packaging/udev/99-brother-ptouch_devcontainer.rules /etc/udev/rules.d/
-   sudo udevadm control --reload-rules && sudo udevadm trigger
-   ```
-
-   Unplug and replug the printer. Confirm world-writable access on the host:
-
-   ```bash
-   lsusb | grep -i 04f9                    # note Bus and Device numbers
-   ls -l /dev/bus/usb/<bus>/<device>       # expect crw-rw-rw-
-   ```
-
-   If mode is still `664`, the standard rule may have loaded after the
-   devcontainer rule — remove the old hyphenated copy if present, ensure only
-   `99-brother-ptouch.rules` and `99-brother-ptouch_devcontainer.rules` are
-   installed (the `_devcontainer` suffix sorts last and wins).
-
-   For normal (non-container) CLI use on the host, keep
-   [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules)
-   (`0664` + `plugdev`) instead.
-
-2. Confirm the device appears: `lsusb -d 04f9:` (PT-E920BT is `04f9:224b`).
-3. Check permissions on the device node after replug.
-
-### Recreate the devcontainer
-
-After changing compose overrides, rebuild so passthrough and post-create run:
-
-- VS Code: **Dev Containers: Rebuild Container**, or
-- Host: `podman compose -f .devcontainer/docker-compose.yml -f .devcontainer/docker-compose.project.yaml -f .devcontainer/docker-compose.local.yaml up -d --force-recreate`
-
-### Verify from inside the container
-
-With the PT-E920BT connected and powered on:
+Install the container rule, which sets `MODE="0666"`:
 
 ```bash
-# libusb backend loaded
-uv run python -c "import usb.backend.libusb1 as b; print(b.get_backend())"
-
-# USB device tree visible
-test -d /dev/bus/usb && ls /dev/bus/usb
-
-# Library discovery
-uv run brother-ptouch-driver discover
-
-# Opt-in hardware tests (requires a connected printer)
-just test-hardware
+sudo cp packaging/udev/99-brother-ptouch_devcontainer.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-### Permission fallbacks (rootless Podman)
+Replug, then confirm `crw-rw-rw-` on the host node. The `_devcontainer` suffix
+sorts after [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules)
+so it wins where both are installed; remove any older hyphenated copy.
+`setup-usb.sh --devcontainer` performs these steps and skips `plugdev`.
 
-If enumeration finds the device (`lsusb`, pyusb `find`) but `discover` returns
-nothing or `open()` fails with permission denied, the bind-mounted node is
-likely `nobody:nogroup` with mode `0664` (container processes only get
-`other::r--`):
+Fallbacks, in order of preference:
 
-1. **Devcontainer udev rule (recommended for dev):** install
-   [99-brother-ptouch_devcontainer.rules](../../packaging/udev/99-brother-ptouch_devcontainer.rules)
-   (`MODE="0666"`), replug, verify `crw-rw-rw-` on the host node.
-2. **One-off test without udev change:** `sudo chmod 666 /dev/bus/usb/<bus>/<device>`
-   (lost on replug).
-3. **Normal host CLI:** use [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules)
-   with `plugdev` group membership — not sufficient alone inside rootless Podman.
+1. The `MODE="0666"` rule above — durable across replug.
+2. `sudo chmod 666 /dev/bus/usb/<bus>/<device>` — one-off, lost on replug.
+3. [99-brother-ptouch.rules](../../packaging/udev/99-brother-ptouch.rules) with
+   `plugdev` membership — correct for host CLI use, not sufficient on its own
+   inside rootless Podman.
 
-## Troubleshooting
-
-### Permission denied
-
-If `uv run brother-ptouch-driver discover` or transport open fails with a permission error,
-install the udev rule above and confirm group membership. The CLI error message
-includes a pointer to this document.
-
-### Device busy
-
-Another process (often the CUPS `usblp` kernel driver) may have claimed the
-device. Unplug and replug the printer, stop conflicting print jobs, or detach
-the kernel driver (the library attempts this automatically on `open()`).
-
-### No device found
-
-- Confirm the printer is powered on and connected via USB.
-- Run `lsusb -d 04f9:` and check that the product string is `PT-E920BT`.
-- Only PT-E920BT devices are listed; other Brother models are ignored by design.
+Rootful Docker users who hit a device-cgroup deny on bind-mounted nodes can add
+`device_cgroup_rules: ["c 189:* rwm"]` to their own compose override.

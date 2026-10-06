@@ -1,8 +1,10 @@
 """Golden-image regression tests for render_text.
 
-Golden PNG files under tests/assets/golden/ are compared byte-for-byte against
-fresh renders using the bundled DejaVuSans.ttf. When rendering intentionally
-changes, regenerate fixtures::
+Golden PNG files under tests/assets/golden/ are compared against fresh renders
+using the bundled DejaVuSans.ttf. The comparison is tolerant of rasterizer
+drift rather than byte-for-byte -- see render_compare for why, and for what is
+still asserted exactly. When rendering intentionally changes, regenerate
+fixtures::
 
     just gen-fixtures-labels
 """
@@ -14,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image
+from render_compare import assert_render_close
 
 from brother_ptouch_driver.protocol.enums import TapeWidth
 from brother_ptouch_label.text import render_text
@@ -62,5 +65,4 @@ def test_render_text_matches_golden(case: _GoldenCase, golden_font: Path) -> Non
         rotate=case.rotate,
     )
 
-    assert actual.size == expected.size
-    assert actual.tobytes() == expected.tobytes()
+    assert_render_close(actual, expected, label=case.filename)

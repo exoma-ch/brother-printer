@@ -3,30 +3,34 @@
 
 exclude: ^.github_data/|^docs/issues/|^docs/pull-requests/
 
+# Build python-language hooks with the project interpreter (3.14) so PEP 758
+# syntax (bare except tuples) never false-flags under an older parser. Refs #803.
+default_language_version:
+  python: python3.14
+
 repos:
   # General Pre-commit Hooks (Fixes formatting issues)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
     hooks:
-      # Enforce topic branch naming:
-      # - chore/<short_summary> (no issue required)
-      # - <type>/<issue_number>-<short_summary> (for feature, bugfix, etc.)
-      # - worktree/<issue_number> (autonomous worktree branches)
-      # Allows main, dev, and branches matching the convention.
-      - id: no-commit-to-branch
-        name: branch-name (enforce <type>/<issue>-<summary>)
-        args:
-          - --branch
-          - __none__  # override default so main/dev are not protected
-          - --pattern
-          - "^(?!main$)(?!dev$)(?!^(chore)/[a-z0-9]+(-[a-z0-9]+)*$)(?!^(feature|bugfix|hotfix|release|docs|test|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$)(?!^worktree/[0-9]+$).+$"
       - id: check-added-large-files
+        # The scaffold copies devkit's own, growing CHANGELOG.md into
+        # .devcontainer/CHANGELOG.md; a fresh consumer's first commit adds
+        # that file past this hook's 500 KB default (#1801).
+        exclude: ^\.devcontainer/CHANGELOG\.md$
       - id: check-case-conflict
       - id: check-json
+        # The three JSONC scaffold files carry a `//` provenance banner (#1053)
+        # that check-json's strict parser rejects; VS Code / the devcontainer
+        # CLI accept it. Strict-JSON files (renovate.json etc.) stay checked.
+        exclude: (^|/)(\.devcontainer/devcontainer\.json|\.vscode/settings\.json|\.devcontainer/workspace\.code-workspace\.example)$
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-toml
       - id: check-yaml
+        # git-hooks.nix' check-yaml built-in hardcodes --multi, so match it here
+        # to keep the runner and the checks.pre-commit gate in agreement (#778).
+        args: [--allow-multiple-documents]
       - id: debug-statements
       - id: destroyed-symlinks
       - id: detect-private-key
@@ -34,13 +38,41 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
 
-  # Python Linting and Formatting (Ruff)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: aad66557af3b56ba6d4d69cd1b6cba87cef50cbb  # v0.14.3
+  # Enforce topic branch naming with vig-utils' validate-branch-name — the one
+  # implementation of the rule, which CI's branch-name gate runs too (#1760):
+  # - <type>/<issue_number>-<short_summary> (--types: feature, bugfix, etc.)
+  # - chore/<short_summary> (no issue required; likewise every other
+  #   Refs-optional commit type from DEVKIT_REFS_OPTIONAL_TYPES, #1767)
+  # - worktree/<issue_number>, renovate/*, release/X.Y.Z
+  # - main, and dev under the gitflow workflow model (--workflow)
+  # The args are rendered from .vig-os on every devkit upgrade.
+  - repo: local
+    hooks:
+      - id: validate-branch-name
+        name: branch-name (enforce <type>/<issue>-<summary>)
+        entry: uv run validate-branch-name
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages: [pre-commit]
+        args:
+          - --types=feature,bugfix,hotfix,release,docs,test,refactor
+          - --issueless-types=chore
+          - --workflow=gitflow
+
+  # Python Linting and Formatting (Ruff, sourced from the flake dev-shell)
+  - repo: local
     hooks:
       - id: ruff
-        args: [--fix]
+        name: ruff (lint/fix python)
+        entry: ruff check --fix
+        language: system
+        types: [python]
       - id: ruff-format
+        name: ruff-format (format python)
+        entry: ruff format
+        language: system
+        types: [python]
 
   # YAML Linting
   - repo: https://github.com/adrienverge/yamllint
@@ -49,22 +81,76 @@ repos:
       - id: yamllint
         args: ["--format", "parsable", "--strict"]
 
-  # Shellcheck
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: a23f6b85d0fdd5bb9d564e2579e678033debbdff  # v0.10.0.1
+  # Shellcheck (sourced from the flake dev-shell toolchain). The
+  # shellcheck-py wheel bundles a manylinux shellcheck binary that the Nix
+  # image's non-FHS userland cannot exec, and the prek/uv installer cannot
+  # build that wheel under Python 3.14 — so, like ruff/typos/nixfmt (#697,
+  # #701), shellcheck runs as a language:system hook resolved from the flake
+  # (devTools ships `shellcheck`). Refs #778.
+  - repo: local
     hooks:
       - id: shellcheck
         name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
+        # .envrc files (root + the scaffolded template stub) are direnv stdlib
+        # scripts with no shebang; exclude them from SC2148 at any path.
         args: ["-x"]
-        exclude: ^\.envrc$
+        exclude: (^|/)\.envrc$|^assets/guardrails/
 
-  # Markdown Linting (excludes auto-generated docs)
-  - repo: https://github.com/jackdewinter/pymarkdown
-    rev: f93643d339dfee2a1022e7b05e8b5a281bfac553  # v0.9.23
+  # >>> devkit:actionlint — excised when the actionlint feature is disabled (#1660)
+  # GitHub Actions workflow linting (actionlint from the flake dev-shell
+  # toolchain, like shellcheck above — both ship in devTools, so both resolve
+  # from PATH in every mode). Lints this repo's own .github/workflows/ via
+  # actionlint's auto-discovery, with its bundled shellcheck pass over `run:`
+  # blocks enabled (#1003) so workflow scripts get the same lint as .sh files.
+  #
+  # Runner labels actionlint's built-in list does not know belong in
+  # .github/actionlint.yaml (shipped alongside this config) — declare the label
+  # there rather than loosening this hook. Refs #1660.
+  - repo: local
+    hooks:
+      - id: actionlint
+        name: actionlint (lint GitHub Actions workflows)
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false
+  # <<< devkit:actionlint
+
+  # Composite-action shell linting (vig-utils' shellcheck-composite-actions,
+  # #1704). actionlint refuses a composite action outright (`unexpected key
+  # "runs" for "workflow" section`) and has no composite mode, so every `run:`
+  # body moved out of a workflow and into .github/actions/*/action.yml loses its
+  # shellcheck pass. This hook reproduces actionlint's own recipe over those
+  # bodies — same `${{ }}` neutralisation, same prelude, same exclude list — so
+  # the two hooks gate one lint. shellcheck itself resolves from PATH (it ships
+  # in devTools in every mode), like actionlint above.
+  - repo: local
+    hooks:
+      - id: shellcheck-composite-actions
+        name: shellcheck-composite-actions (lint composite action run bodies)
+        entry: uv run shellcheck-composite-actions
+        language: system
+        files: (^|/)\.github/actions/[^/]+/action\.ya?ml$
+        pass_filenames: true
+
+  # Markdown linting (pymarkdown from the flake toolchain; excludes auto-generated
+  # docs). Packaged in nix/pymarkdown.nix and promoted to a language: system hook
+  # (#1170), so it resolves from PATH like shellcheck/typos instead of its
+  # upstream pre-commit repo (whose native pyjson5 fails on bare host runners).
+  - repo: local
     hooks:
       - id: pymarkdown
         name: pymarkdown
+        entry: pymarkdown
+        language: system
+        types: [markdown]
         args: ["-c", ".pymarkdown", "fix"]
+        # docs/vendor/ holds upstream reference material reproduced verbatim
+        # (the PT-E920BT user guide and the P-touch raster command reference).
+        # It is not ours to reformat. Refs: #60
         exclude: ^(README\.md|CONTRIBUTING\.md|TESTING\.md|docs/vendor/(pt-e920bt-user-guide|ptouch-raster-command-reference)\.md)$
 
   # Justfile formatting
@@ -77,9 +163,71 @@ repos:
         files: ^justfile(\..*)?$
         pass_filenames: false
 
-  # Typo Linting
-  - repo: https://github.com/crate-ci/typos
-    rev: 07d900b8fa1097806b8adb6391b0d3e0ac2fdea7  # v1.39.0
+  # Nix formatting (nixfmt-rfc-style from the flake dev-shell toolchain)
+  - repo: local
+    hooks:
+      - id: nixfmt
+        name: nixfmt (format/check nix files)
+        entry: nixfmt --check
+        language: system
+        files: \.nix$
+        types: [file]
+
+  # Typo Linting (typos sourced from the flake dev-shell)
+  - repo: local
     hooks:
       - id: typos
+        name: typos (source typo checker)
+        entry: typos --force-exclude
+        language: system
+        stages: [pre-commit]
+        # Vendored upstream reference docs, reproduced verbatim. Binary golden
+        # fixtures are excluded in .typos.toml instead, which --force-exclude
+        # honours even when pre-commit passes the paths explicitly. Refs: #60
         exclude: ^docs/vendor/(pt-e920bt-user-guide|ptouch-raster-command-reference)\.md$
+
+  # Security exception expiry enforcement (Refs: #566)
+  - repo: local
+    hooks:
+      - id: check-expirations
+        name: check-expirations (.trivyignore/.vulnixignore expiry enforcement)
+        entry: uv run check-expirations .trivyignore .vulnixignore
+        language: system
+        files: ^\.(trivyignore|vulnixignore)$
+        pass_filenames: false
+
+  # AI agent identity: strip trailers before commit-msg (Refs: #163)
+  - repo: local
+    hooks:
+      - id: prepare-commit-msg-strip-trailers
+        name: strip agent trailers from commit message
+        entry: uv run prepare-commit-msg-strip-trailers
+        language: system
+        stages: [prepare-commit-msg]
+        pass_filenames: true
+
+  # AI agent identity: reject author/committer matching blocklist (Refs: #163)
+  - repo: local
+    hooks:
+      - id: check-agent-identity
+        name: check agent identity
+        entry: uv run check-agent-identity
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+  # Commit message validation (commit-msg stage). Scope is free-form
+  # ("alphanumeric and hyphens only" per docs/COMMIT_MESSAGE_STANDARD.md);
+  # only the type, the Refs line and the agent blocklist are enforced.
+  - repo: local
+    hooks:
+      - id: validate-commit-msg
+        name: validate commit message
+        entry: uv run validate-commit-msg
+        language: system
+        stages: [commit-msg]
+        args: [
+          "--types", "feat,fix,docs,chore,refactor,perf,test,ci,build,revert,style",
+          "--refs-optional-types", "chore",
+          "--blocked-patterns", ".github/agent-blocklist.toml",
+        ]
