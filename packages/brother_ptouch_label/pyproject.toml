@@ -5,8 +5,8 @@ description = "Text-to-label rendering and CLI for Brother PT-E920BT"
 requires-python = ">=3.12"
 dependencies = [
     "brother-ptouch-driver",
-    "click>=8.1",
-    "pillow>=10.1",
+    "click==8.4.1",
+    "pillow==12.3.0",
 ]
 
 [project.scripts]
