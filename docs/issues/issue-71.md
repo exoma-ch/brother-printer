@@ -2,7 +2,7 @@
 type: issue
 state: open
 created: 2026-10-06T10:19:23Z
-updated: 2026-10-06T10:25:01Z
+updated: 2026-10-12T06:08:26Z
 author: renovate[bot]
 author_url: https://github.com/renovate[bot]
 url: https://github.com/exoma-ch/brother-printer/issues/71
@@ -13,21 +13,21 @@ milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-10-07T07:58:49.863Z
+synced: 2026-10-12T08:20:09.696Z
 ---
 
 # [Issue 71]: [Dependency Dashboard](https://github.com/exoma-ch/brother-printer/issues/71)
 
 This issue lists Renovate updates and detected dependencies. Read the [Dependency Dashboard](https://docs.renovatebot.com/key-concepts/dashboard/) docs to learn more.<br>[View this repository on the Mend.io Web Portal](https://developer.mend.io/github/exoma-ch/brother-printer).
 
-## Awaiting Schedule
+## Open
 
-The following updates are awaiting their schedule. To get an update now, click on a checkbox below.
+The following updates have all been created. To force a retry/rebase of any, click on a checkbox below.
 
- - [ ] <!-- unschedule-branch=renovate/pin-dependencies -->build(pip): pin dependencies (`click`, `hatchling`, `pillow`, `pytest`, `pytest-cov`, `pyusb`, `rich`)
- - [ ] <!-- unschedule-branch=renovate/ubuntu-26.x -->ci(actions): update dependency ubuntu to v26
- - [ ] <!-- unschedule-branch=renovate/lock-file-maintenance -->build(pip): lock file maintenance
- - [ ] <!-- create-all-awaiting-schedule-prs -->🔐 **Create all awaiting schedule PRs at once** 🔐
+ - [ ] <!-- rebase-branch=renovate/pin-dependencies -->[build(pip): pin dependencies](../pull/73) (`click`, `hatchling`, `pillow`, `pytest`, `pytest-cov`, `pyusb`, `rich`)
+ - [ ] <!-- rebase-branch=renovate/ubuntu-26.x -->[ci(actions): update dependency ubuntu to v26](../pull/74)
+ - [ ] <!-- rebase-branch=renovate/lock-file-maintenance -->[build(pip): lock file maintenance](../pull/75)
+ - [ ] <!-- rebase-all-open-prs -->**Click on this checkbox to rebase all open PRs at once**
 
 ## Detected Dependencies
 
