@@ -2,7 +2,7 @@
 type: issue
 state: open
 created: 2026-10-06T10:19:23Z
-updated: 2026-10-12T06:08:26Z
+updated: 2026-10-23T10:59:43Z
 author: renovate[bot]
 author_url: https://github.com/renovate[bot]
 url: https://github.com/exoma-ch/brother-printer/issues/71
@@ -13,7 +13,7 @@ milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-10-12T08:20:09.696Z
+synced: 2026-10-24T06:42:18.814Z
 ---
 
 # [Issue 71]: [Dependency Dashboard](https://github.com/exoma-ch/brother-printer/issues/71)
@@ -24,7 +24,8 @@ This issue lists Renovate updates and detected dependencies. Read the [Dependenc
 
 The following updates have all been created. To force a retry/rebase of any, click on a checkbox below.
 
- - [ ] <!-- rebase-branch=renovate/pin-dependencies -->[build(pip): pin dependencies](../pull/73) (`click`, `hatchling`, `pillow`, `pytest`, `pytest-cov`, `pyusb`, `rich`)
+ - [ ] <!-- rebase-branch=renovate/pypi-pillow-vulnerability -->[build(pip): update dependency pillow to v13 [security]](../pull/76)
+ - [ ] <!-- rebase-branch=renovate/pin-dependencies -->[build(pip): pin dependencies](../pull/73) (`click`, `hatchling`, `pytest`, `pytest-cov`, `pyusb`, `rich`)
  - [ ] <!-- rebase-branch=renovate/ubuntu-26.x -->[ci(actions): update dependency ubuntu to v26](../pull/74)
  - [ ] <!-- rebase-branch=renovate/lock-file-maintenance -->[build(pip): lock file maintenance](../pull/75)
  - [ ] <!-- rebase-all-open-prs -->**Click on this checkbox to rebase all open PRs at once**
@@ -132,7 +133,7 @@ The following updates have all been created. To force a retry/rebase of any, cli
 <details><summary>packages/brother_ptouch_driver/pyproject.toml (3)</summary>
 
  - `click >=8.1` → [Updates: `==8.4.1`]
- - `pillow >=10.1` → [Updates: `==12.3.0`]
+ - `pillow >=10.1` → [Updates: `>=10.1`]
  - `pyusb >=1.2` → [Updates: `==1.3.1`]
 
 </details>
@@ -140,7 +141,7 @@ The following updates have all been created. To force a retry/rebase of any, cli
 <details><summary>packages/brother_ptouch_label/pyproject.toml (2)</summary>
 
  - `click >=8.1` → [Updates: `==8.4.1`]
- - `pillow >=10.1` → [Updates: `==12.3.0`]
+ - `pillow >=10.1` → [Updates: `>=10.1`]
 
 </details>
 
