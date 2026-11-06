@@ -2,7 +2,7 @@
 type: issue
 state: open
 created: 2026-10-06T10:19:23Z
-updated: 2026-10-23T10:59:43Z
+updated: 2026-11-05T23:10:56Z
 author: renovate[bot]
 author_url: https://github.com/renovate[bot]
 url: https://github.com/exoma-ch/brother-printer/issues/71
@@ -13,7 +13,7 @@ milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-10-24T06:42:18.814Z
+synced: 2026-11-06T08:48:08.891Z
 ---
 
 # [Issue 71]: [Dependency Dashboard](https://github.com/exoma-ch/brother-printer/issues/71)
@@ -32,52 +32,12 @@ The following updates have all been created. To force a retry/rebase of any, cli
 
 ## Detected Dependencies
 
-<details><summary>github-actions (17)</summary>
+<details><summary>github-actions (3)</summary>
 <blockquote>
-
-<details><summary>.github/actions/setup-devkit-toolchain/action.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/abandon-release.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/ci.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/codeql.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/devkit-upgrade.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/prepare-hotfix.yml</summary>
-
-
-</details>
 
 <details><summary>.github/workflows/prepare-release-extension.yml (1)</summary>
 
  - `ubuntu 26.04`
-
-</details>
-
-<details><summary>.github/workflows/prepare-release.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/promote-release.yml</summary>
-
 
 </details>
 
@@ -88,39 +48,9 @@ The following updates have all been created. To force a retry/rebase of any, cli
 
 </details>
 
-<details><summary>.github/workflows/release-core.yml</summary>
-
-
-</details>
-
 <details><summary>.github/workflows/release-extension.yml (1)</summary>
 
  - `ubuntu 22.04` → [Updates: `26.04`]
-
-</details>
-
-<details><summary>.github/workflows/release-publish.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/release.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/scorecard.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/sync-issues.yml</summary>
-
-
-</details>
-
-<details><summary>.github/workflows/sync-main-to-dev.yml</summary>
-
 
 </details>
 
