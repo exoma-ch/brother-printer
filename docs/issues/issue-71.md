@@ -2,7 +2,7 @@
 type: issue
 state: open
 created: 2026-10-06T10:19:23Z
-updated: 2026-11-05T23:10:56Z
+updated: 2026-11-10T05:05:39Z
 author: renovate[bot]
 author_url: https://github.com/renovate[bot]
 url: https://github.com/exoma-ch/brother-printer/issues/71
@@ -13,7 +13,7 @@ milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-11-06T08:48:08.891Z
+synced: 2026-11-10T09:00:17.009Z
 ---
 
 # [Issue 71]: [Dependency Dashboard](https://github.com/exoma-ch/brother-printer/issues/71)
@@ -75,12 +75,13 @@ The following updates have all been created. To force a retry/rebase of any, cli
 
 </details>
 
-<details><summary>pyproject.toml (4)</summary>
+<details><summary>pyproject.toml (5)</summary>
 
  - `hatchling >=1.25` → [Updates: `==1.29.0`]
  - `pytest >=8.0` → [Updates: `==9.0.3`]
  - `pytest-cov >=4.0` → [Updates: `==7.1.0`]
  - `rich >=13.0.0` → [Updates: `==15.0.0`]
+ - `pillow lock file @ 12.3.0` → [Updates: `undefined`]
 
 </details>
 
