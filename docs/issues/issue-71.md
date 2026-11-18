@@ -2,7 +2,7 @@
 type: issue
 state: open
 created: 2026-10-06T10:19:23Z
-updated: 2026-11-11T18:40:33Z
+updated: 2026-11-17T18:13:07Z
 author: renovate[bot]
 author_url: https://github.com/renovate[bot]
 url: https://github.com/exoma-ch/brother-printer/issues/71
@@ -13,7 +13,7 @@ milestone: none
 projects: none
 parent: none
 children: none
-synced: 2026-11-12T09:00:45.959Z
+synced: 2026-11-18T09:30:59.699Z
 ---
 
 # [Issue 71]: [Dependency Dashboard](https://github.com/exoma-ch/brother-printer/issues/71)
@@ -63,7 +63,7 @@ The following updates have all been created. To force a retry/rebase of any, cli
 <details><summary>packages/brother_ptouch_driver/pyproject.toml (3)</summary>
 
  - `click >=8.1` → [Updates: `==8.4.1`]
- - `pillow >=10.1` → [Updates: `>=10.1`]
+ - `pillow >=10.1` → [Updates: `lock file @ 13.0.0`]
  - `pyusb >=1.2` → [Updates: `==1.3.1`]
 
 </details>
@@ -71,7 +71,7 @@ The following updates have all been created. To force a retry/rebase of any, cli
 <details><summary>packages/brother_ptouch_label/pyproject.toml (2)</summary>
 
  - `click >=8.1` → [Updates: `==8.4.1`]
- - `pillow >=10.1` → [Updates: `>=10.1`]
+ - `pillow >=10.1` → [Updates: `lock file @ 13.0.0`]
 
 </details>
 
@@ -81,7 +81,7 @@ The following updates have all been created. To force a retry/rebase of any, cli
  - `pytest >=8.0` → [Updates: `==9.0.3`]
  - `pytest-cov >=4.0` → [Updates: `==7.1.0`]
  - `rich >=13.0.0` → [Updates: `==15.0.0`]
- - `pillow lock file @ 12.3.0` → [Updates: `13.0.0`]
+ - `pillow lock file @ 12.3.0` → [Updates: `lock file @ 13.0.0`]
 
 </details>
 
